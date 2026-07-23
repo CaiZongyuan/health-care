@@ -15,6 +15,13 @@
       "when": 1784815660363,
       "tag": "0001_ai_summaries_and_med_time",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784819197715,
+      "tag": "0002_med_stages",
+      "breakpoints": true
     }
   ]
 }

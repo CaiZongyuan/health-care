@@ -19,6 +19,8 @@ import { Label } from '~/components/ui/label'
 import { Textarea } from '~/components/ui/textarea'
 import { formatDateTime } from '~/lib/datetime'
 
+const MED_STAGES = ['早晨', '中午', '晚上', '睡前'] as const
+
 export const Route = createFileRoute('/profile')({
   component: ProfilePage,
   loader: async () => await getProfileData(),
@@ -41,7 +43,7 @@ function ProfilePage() {
   const [showAdd, setShowAdd] = useState(false)
   const [mName, setMName] = useState('')
   const [mDosage, setMDosage] = useState('')
-  const [mTime, setMTime] = useState('')
+  const [mStages, setMStages] = useState<string[]>([])
 
   const flash = (k: string) => {
     setSavedKey(k)
@@ -67,11 +69,15 @@ function ProfilePage() {
   const onAddMed = async (e: React.FormEvent) => {
     e.preventDefault()
     await addMedication({
-      data: { name: mName, dosage: mDosage, time: mTime, timeOfDay: '' },
+      data: {
+        name: mName,
+        dosage: mDosage,
+        stages: mStages.map((stage) => ({ stage, time: '' })),
+      },
     })
     setMName('')
     setMDosage('')
-    setMTime('')
+    setMStages([])
     setShowAdd(false)
     await router.invalidate()
   }
@@ -262,7 +268,12 @@ function ProfilePage() {
                   <div className="flex-1">
                     <div className="font-bold">{m.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {[m.time, m.dosage].filter(Boolean).join(' · ')}
+                      {[
+                        (m.stages ?? []).map((s) => s.stage).join('、'),
+                        m.dosage,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </div>
                   </div>
                   <Button
@@ -309,22 +320,44 @@ function ProfilePage() {
                 onChange={(e) => setMName(e.target.value)}
                 placeholder="药品名称"
               />
-              <div className="flex gap-2">
-                <Input
-                  value={mDosage}
-                  onChange={(e) => setMDosage(e.target.value)}
-                  placeholder="剂量"
-                  className="flex-1"
-                />
-                <Input
-                  type="time"
-                  value={mTime}
-                  onChange={(e) => setMTime(e.target.value)}
-                  className="flex-1"
-                />
+              <Input
+                value={mDosage}
+                onChange={(e) => setMDosage(e.target.value)}
+                placeholder="剂量（如 1片/30mg）"
+              />
+              <div>
+                <Label className="mb-1 block text-xs text-muted-foreground">
+                  服用时段（一天多次请多选）
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {MED_STAGES.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() =>
+                        setMStages((prev) =>
+                          prev.includes(s)
+                            ? prev.filter((x) => x !== s)
+                            : [...prev, s],
+                        )
+                      }
+                      className={
+                        mStages.includes(s)
+                          ? 'rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground'
+                          : 'rounded-full border border-border bg-background px-4 py-2 text-sm text-muted-foreground'
+                      }
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="flex gap-2">
-                <Button type="submit" disabled={!mName} className="flex-1">
+                <Button
+                  type="submit"
+                  disabled={!mName || mStages.length === 0}
+                  className="flex-1"
+                >
                   添加
                 </Button>
                 <Button

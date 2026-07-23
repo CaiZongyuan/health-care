@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>趋势 & 导出 · 设计候选（mockup）</title>
+<style>
+  :root { --blue:#2563eb; --blue-d:#1d4ed8; --green:#16a34a; --amber:#d97706; --red:#dc2626; --gray:#6b7280; --line:#e5e7eb; --bg:#f3f4f6; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:#111827; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; -webkit-tap-highlight-color:transparent; }
+  .wrap { max-width:760px; margin:0 auto; padding:16px 14px 80px; }
+  h1 { font-size:22px; margin:8px 0 2px; }
+  .sub { color:var(--gray); font-size:13px; margin-bottom:18px; }
+  .note { background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:10px 12px; border-radius:10px; font-size:13px; margin-bottom:18px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px; margin:14px 0; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .tag { display:inline-block; background:var(--blue); color:#fff; font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; margin-right:8px; vertical-align:middle; }
+  .tag.green { background:var(--green); } .tag.amber { background:var(--amber); } .tag.purple { background:#7c3aed; }
+  .ctitle { font-size:16px; font-weight:700; margin:2px 0 2px; }
+  .cdesc { color:var(--gray); font-size:13px; margin:0 0 12px; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { border:1px solid var(--line); background:#fff; color:#374151; padding:6px 14px; border-radius:999px; font-size:13px; cursor:pointer; }
+  .chip.on { background:var(--blue); color:#fff; border-color:var(--blue); }
+  svg { display:block; width:100%; height:auto; }
+  .legend { display:flex; gap:14px; font-size:12px; color:var(--gray); margin-top:8px; flex-wrap:wrap; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:999px; margin-right:4px; vertical-align:middle; }
+  .grid { display:grid; gap:8px; }
+  .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:10px 0; }
+  .kpi { background:#f9fafb; border:1px solid var(--line); border-radius:10px; padding:10px; text-align:center; }
+  .kpi b { display:block; font-size:20px; }
+  .kpi span { font-size:11px; color:var(--gray); }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th,td { padding:6px 8px; border-bottom:1px solid var(--line); text-align:left; }
+  th { color:var(--gray); font-weight:600; }
+  .bad { color:var(--red); font-weight:600; }
+  .pre { background:#0b1020; color:#e5e7eb; padding:12px; border-radius:10px; font-size:11px; font-family:ui-monospace,Menlo,monospace; white-space:pre; overflow:auto; }
+  .btn { background:var(--blue); color:#fff; border:0; padding:8px 16px; border-radius:10px; font-size:14px; cursor:pointer; }
+  .cal { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .cal span { aspect-ratio:1; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:9px; color:#fff; }
+  .cal .empty { background:#f3f4f6; color:#9ca3af; }
+  .sec-head { font-size:13px; font-weight:700; color:var(--blue-d); margin:22px 4px 2px; text-transform:uppercase; letter-spacing:.5px; }
+  /* 打印：只保留报告卡 */
+  @media print { body * { visibility:hidden; } #report, #report * { visibility:visible; } #report { position:absolute; left:0; top:0; width:100%; border:0; box-shadow:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>趋势 & 导出 · 设计候选</h1>
+  <p class="sub">下方是用示例数据真实渲染的几种形态。看中的告诉我编号（如 A、C、E、G），我再在 App 里实现。</p>
+  <div class="note">💡 这只是设计稿（mockup），数据是假的。范围切换可点；其余图表展示"长这样"。</div>
+
+  <div class="sec-head">一、时间范围（解决"只能看 7 次"）</div>
+  <div class="card">
+    <p class="ctitle"><span class="tag">范围</span>可切换的区间选择器</p>
+    <p class="cdesc">点下面芯片，折线图会按"按次数"或"按天数"重新渲染。建议 App 里提供：7次 / 14次 / 30次 / 7天 / 30天 / 90天。</p>
+    <div class="chips" id="rangeChips">
+      <span class="chip on" data-r="7次">7次</span>
+      <span class="chip" data-r="14次">14次</span>
+      <span class="chip" data-r="30次">30次</span>
+      <span class="chip" data-r="7天">7天</span>
+      <span class="chip" data-r="30天">30天</span>
+      <span class="chip" data-r="90天">90天</span>
+    </div>
+    <div id="chartA" style="margin-top:14px"></div>
+    <div class="legend"><span><i class="dot" style="background:#dc2626"></i>高压</span><span><i class="dot" style="background:#2563eb"></i>低压</span><span><i class="dot" style="background:#bbf7d0"></i>正常带(90–140)</span></div>
+  </div>
+
+  <div class="sec-head">二、图表候选（解决"看不懂"，多几种）</div>
+
+  <div class="card">
+    <p class="ctitle"><span class="tag">A</span>增强折线图（日期轴 + 正常带 + 标注）</p>
+    <p class="cdesc">在当前折线基础上：横轴标日期、纵轴标数值、正常范围绿带、最高/最低点标注。最直观，推荐保留。</p>
+    <div id="chartA2"></div>
+  </div>
+
+  <div class="card">
+    <p class="ctitle"><span class="tag">B</span>散点分布图（每次一个点）</p>
+    <p class="cdesc">每次测量一个点（按日期排开），颜色表示达标/偏高。适合看"波动幅度"和"哪几次超标"。</p>
+    <div id="chartB"></div>
+    <div class="legend"><span><i class="dot" style="background:#16a34a"></i>达标</span><span><i class="dot" style="background:#d97706"></i>正常高值</span><span><i class="dot" style="background:#dc2626"></i>偏高</span></div>
+  </div>
+
+  <div class="card">
+    <p class="ctitle"><span class="tag green">C</span>每日均值柱状图（近 14 天）</p>
+    <p class="cdesc">每天一个均值柱（高压/低压），上方有达标参考线。适合看"每天整体水平"的趋势。</p>
+    <div id="chartC"></div>
+  </div>
+
+  <div class="card">
+    <p class="ctitle"><span class="tag amber">D</span>达标率 + 区间分布</p>
+    <p class="cdesc">环形图显示达标率；下方柱状显示各区间占比（偏低/正常/正常高值/偏高）。一眼看"整体控制得怎么样"。</p>
+    <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap">
+      <div style="width:150px" id="donut"></div>
+      <div style="flex:1; min-width:200px" id="dist"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="ctitle"><span class="tag purple">E</span>日历热力图（近 30 天）</p>
+    <p class="cdesc">类似 GitHub 贡献图：每天一格，颜色=当日达标情况（绿=达标、黄=正常高值、红=偏高、灰=无数据）。一眼看"哪几天不好"。</p>
+    <div class="cal" id="cal"></div>
+    <div class="legend"><span><i class="dot" style="background:#16a34a"></i>达标</span><span><i class="dot" style="background:#d97706"></i>正常高值</span><span><i class="dot" style="background:#dc2626"></i>偏高</span><span><i class="dot" style="background:#e5e7eb"></i>无数据</span></div>
+  </div>
+
+  <div class="sec-head">三、导出给医生（优雅、便于分析）</div>
+
+  <div class="card" id="report">
+    <p class="ctitle"><span class="tag">G</span>医生报告（A4 / 可打印成 PDF）</p>
+    <p class="cdesc">一页 A4 排版：患者档案 + 关键统计 + 趋势图 + 异常清单 + 用药 + 小结。点"打印/导出PDF"用浏览器另存 PDF。医生友好。</p>
+    <button class="btn" onclick="window.print()">🖨️ 打印 / 导出 PDF</button>
+    <div style="border:1px solid var(--line); border-radius:10px; padding:16px; margin-top:12px; background:#fff">
+      <div style="text-align:center; border-bottom:2px solid var(--blue); padding-bottom:8px; margin-bottom:12px">
+        <div style="font-size:18px; font-weight:700">健康随访报告</div>
+        <div style="font-size:12px; color:var(--gray)">生成于 2026-07-23 · 健康随访管家</div>
+      </div>
+      <table>
+        <tr><th>姓名</th><td>王建国</td><th>年龄</th><td>68</td><th>档案号</th><td>HB-2026</td></tr>
+        <tr><th>病史</th><td colspan="5">原发性高血压(3级) · 脑出血术后康复 · 2型糖尿病</td></tr>
+      </table>
+      <div class="kpis">
+        <div class="kpi"><b>128/82</b><span>平均血压</span></div>
+        <div class="kpi"><b>72%</b><span>达标率(≤135/85)</span></div>
+        <div class="kpi"><b>42</b><span>读数总数(30天)</span></div>
+      </div>
+      <div style="font-size:12px; color:var(--gray); margin:4px 2px">近 30 天血压趋势</div>
+      <div id="reportChart"></div>
+      <div style="font-size:13px; font-weight:700; margin:14px 0 4px">需关注的读数（偏高/危象）</div>
+      <table>
+        <tr><th>时间</th><th>血压</th><th>状态</th><th>症状</th></tr>
+        <tr><td>07-19 晨</td><td>146/92</td><td class="bad">偏高</td><td>头晕</td></tr>
+        <tr><td>07-15 晨</td><td>144/91</td><td class="bad">偏高</td><td>—</td></tr>
+        <tr><td>07-08 晨</td><td>150/94</td><td class="bad">偏高</td><td>头痛</td></tr>
+      </table>
+      <div style="font-size:13px; font-weight:700; margin:14px 0 4px">当前用药</div>
+      <div style="font-size:12px; color:#374151">硝苯地平控释片 30mg · 早晨 ｜ 阿托伐他汀 20mg · 睡前</div>
+      <div style="font-size:13px; font-weight:700; margin:14px 0 4px">AI 健康小结</div>
+      <div style="font-size:12px; color:#374151; background:#f9fafb; padding:8px; border-radius:6px">近 30 天早晨血压偶有偏高（3 次 ≥140），整体达标率 72%。建议关注清晨血压，保持规律服药与记录。⚠️ 本报告由工具自动生成，仅供参考，不作为诊断依据。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="ctitle"><span class="tag">H</span>CSV 原始数据（医生可导入 Excel）</p>
+    <p class="cdesc">纯结构化数据，医生/研究者可导入 Excel 做自己的分析。App 里点"导出 CSV"下载。</p>
+    <div class="pre">日期,时间,收缩压,舒张压,心率,血氧,晨起,症状,备注
+2026-07-23,07:30,128,80,72,98,是,,
+2026-07-22,07:45,132,84,74,97,是,,
+2026-07-21,07:20,138,88,76,98,是,"头晕",
+2026-07-20,08:00,125,79,71,98,是,,
+...</div>
+  </div>
+
+  <div class="card">
+    <p class="ctitle"><span class="tag green">I</span>一页摘要（医生卡片）</p>
+    <p class="cdesc">极简：几个大数字 + 异常事件 + 一句话。医生 10 秒看完。适合当面展示或贴在病历。</p>
+    <div class="kpis">
+      <div class="kpi"><b>128/82</b><span>平均</span></div>
+      <div class="kpi"><b>72%</b><span>达标率</span></div>
+      <div class="kpi"><b style="color:var(--red)">3</b><span>偏高次数</span></div>
+    </div>
+    <div style="font-size:13px; background:#fff;">
+      <div style="border-left:3px solid var(--red); padding:6px 10px; background:#fef2f2; border-radius:6px; margin-bottom:6px">⚠ 3 次清晨血压偏高（07-08/15/19）</div>
+      <div style="border-left:3px solid var(--green); padding:6px 10px; background:#f0fdf4; border-radius:6px">✓ 用药依从 100% · 近 30 天 42 次记录</div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:24px">告诉我你想要哪些（例如："范围切换都要、图表选 A+C+E、导出选 G 和 H"），我就照着在 App 里实现。</div>
+</div>
+
+<script>
+// ---------- 示例数据（30 天，确定性生成）----------
+const READINGS = [];
+const today = new Date(); today.setHours(0,0,0,0);
+for (let day=29; day>=0; day--) {
+  const d = new Date(today); d.setDate(d.getDate()-day);
+  const ds = `${d.getMonth()+1}-${String(d.getDate()).padStart(2,'0')}`;
+  const base = 120 + ((day*3) % 9);            // 在 120–128 附近漂
+  // 晨起
+  const sys1 = base + 6 + ((day*7) % 11);      // 偶尔到 140+
+  const dia1 = 78 + ((day*5) % 9);
+  READINGS.push({ date:d, ds, label:`${ds} 晨`, time:'07:30', sys:sys1, dia:dia1, hr:72+((day)%5), morning:true, symptoms:(sys1>=140?['头晕']:[]) });
+  // 部分天晚上加一条
+  if (day % 2 === 0) {
+    READINGS.push({ date:d, ds, label:`${ds} 晚`, time:'20:00', sys:base+1, dia:76+((day*3)%5), hr:70, morning:false, symptoms:[] });
+  }
+}
+
+const status = (s,d) => (s>=180||d>=110)?3:(s>=135||d>=85)?2:(s>=120||d>=80)?1:0; // 0正常 1高值 2偏高 3危象
+const COL = ['#16a34a','#d97706','#dc2626','#7f1d1d'];
+const controlled = (s,d) => s<=135 && d<=85;
+
+// ---------- 通用：取子集 ----------
+function byRange(r) {
+  if (r.endsWith('次')) return READINGS.slice(-parseInt(r));
+  const days = parseInt(r);
+  const since = new Date(today); since.setDate(since.getDate()-(days-1));
+  return READINGS.filter(x => x.date >= since);
+}
+
+// ---------- 折线图 ----------
+function lineChart(items, opts={}) {
+  const W=340,H=150,P=26, yMin=50, yMax=180;
+  const ny = v => H-P-((v-yMin)/(yMax-yMin))*(H-P*2);
+  const nx = i => P + (items.length>1 ? i*( (W-P*2)/(items.length-1) ) : (W-P*2)/2);
+  const sysP = items.map((x,i)=>`${nx(i)},${ny(x.sys)}`).join(' ');
+  const diaP = items.map((x,i)=>`${nx(i)},${ny(x.dia)}`).join(' ');
+  let grid=''; [60,90,140,180].forEach(v=>{ grid+=`<line x1=${P} y1=${ny(v)} x2=${W-P} y2=${ny(v)} stroke="#e5e7eb" stroke-dasharray="3"/><text x=2 y=${ny(v)+3} font-size=8 fill="#9ca3af">${v}</text>`; });
+  const band = `<rect x=${P} y=${ny(140)} width=${W-P*2} height=${ny(90)-ny(140)} fill="#bbf7d0" opacity=.5/>`;
+  const dots = items.map((x,i)=>`<circle cx=${nx(i)} cy=${ny(x.sys)} r=2.5 fill=#fff stroke=#dc2626 stroke-width=1.5/><circle cx=${nx(i)} cy=${ny(x.dia)} r=2.5 fill=#fff stroke=#2563eb stroke-width=1.5/>`).join('');
+  // x 标签：首/中/末
+  const xl = items.length? `<text x=${P} y=${H-6} font-size=8 fill=#9ca3af>${items[0].ds}</text><text x=${W-P-24} y=${H-6} font-size=8 fill=#9ca3af>${items[items.length-1].ds}</text>`:'';
+  return `<svg viewBox="0 0 ${W} ${H}">${band}${grid}<polyline points="${sysP}" fill=none stroke=#dc2626 stroke-width=2/><polyline points="${diaP}" fill=none stroke=#2563eb stroke-width=2/>${dots}${xl}</svg>`;
+}
+
+// ---------- 散点 ----------
+function scatter(items){
+  const W=340,H=150,P=26,yMin=50,yMax=180;
+  const ny=v=>H-P-((v-yMin)/(yMax-yMin))*(H-P*2);
+  const nx=i=>P+i*((W-P*2)/(items.length-1||1));
+  let grid='';[60,90,140,180].forEach(v=>{grid+=`<line x1=${P} y1=${ny(v)} x2=${W-P} y2=${ny(v)} stroke="#e5e7eb" stroke-dasharray="3"/><text x=2 y=${ny(v)+3} font-size=8 fill=#9ca3af>${v}</text>`});
+  const pts=items.map((x,i)=>`<circle cx=${nx(i)} cy=${ny(x.sys)} r=3.5 fill=${COL[status(x.sys,x.dia)]}/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}">${grid}<line x1=${P} y1=${ny(135)} x2=${W-P} y2=${ny(135)} stroke=#dc2626 stroke-dasharray=4 opacity=.4/>${pts}</svg>`;
+}
+
+// ---------- 每日均值柱状（近14天）----------
+function bars(){
+  const byDay={};
+  READINGS.forEach(r=>{ (byDay[r.ds]=byDay[r.ds]||[]).push(r); });
+  const days=Object.entries(byDay).slice(-14);
+  const W=340,H=150,P=20, bw=(W-P*2)/days.length*0.4;
+  const ny=v=>H-P-(v/180)*(H-P*2);
+  let bars='';[90,135].forEach(v=>{bars+=`<line x1=${P} y1=${ny(v)} x2=${W-P} y2=${ny(v)} stroke=${v>=135?'#dc2626':'#16a34a'} stroke-dasharray=3 opacity=.5/><text x=2 y=${ny(v)+3} font-size=8 fill=#9ca3af>${v}</text>`});
+  days.forEach(([ds,arr],i)=>{
+    const avg=arr.reduce((a,r)=>({s:a.s+r.sys,d:a.d+r.dia}),{s:0,d:0}); avg.s/=arr.length; avg.d/=arr.length;
+    const x=P+i*((W-P*2)/days.length)+2;
+    bars+=`<rect x=${x} y=${ny(avg.s)} width=${bw} height=${H-P-ny(avg.s)} fill=#dc2626/>`;
+    bars+=`<rect x=${x+bw+1} y=${ny(avg.d)} width=${bw} height=${H-P-ny(avg.d)} fill=#2563eb/>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}">${bars}</svg>`;
+}
+
+// ---------- 环形达标率 ----------
+function donut(rate){
+  const R=52,r=34,cx=70,cy=60, C=2*Math.PI*R;
+  const off=C*(1-rate/100);
+  return `<svg viewBox="0 0 140 120" style="max-width:150px"><circle cx=${cx} cy=${cy} r=${R} fill=none stroke=#fee2e2 stroke-width=${R-r}/><circle cx=${cx} cy=${cy} r=${R} fill=none stroke=#16a34a stroke-width=${R-r} stroke-dasharray=${C} stroke-dashoffset=${off} transform="rotate(-90 ${cx} ${cy})"/><text x=${cx} y=${cy-2} text-anchor=middle font-size=20 font-weight=700 fill=#16a34a>${rate}%</text><text x=${cx} y=${cy+14} text-anchor=middle font-size=9 fill=#6b7280>达标率</text></svg>`;
+}
+
+// ---------- 区间分布柱 ----------
+function dist(){
+  const c=[0,0,0,0]; READINGS.forEach(r=>c[status(r.sys,r.dia)]++);
+  const labels=['正常','正常高值','偏高','危象']; const max=Math.max(...c);
+  const W=240,H=120,P=18, bw=(W-P*2)/4*0.6;
+  const ny=v=>H-P-(v/max)*(H-P*2);
+  let b=''; c.forEach((n,i)=>{ const x=P+i*((W-P*2)/4)+6; b+=`<rect x=${x} y=${ny(n)} width=${bw} height=${H-P-ny(n)} fill=${COL[i]}/><text x=${x+bw/2} y=${H-5} text-anchor=middle font-size=8 fill=#6b7280>${labels[i]}</text><text x=${x+bw/2} y=${ny(n)-3} text-anchor=middle font-size=9 font-weight=700>${n}</text>` });
+  return `<svg viewBox="0 0 ${W} ${H}">${b}</svg>`;
+}
+
+// ---------- 日历热力图 ----------
+function calendar(){
+  const byDay={}; READINGS.forEach(r=>{ (byDay[r.ds]=byDay[r.ds]||[]).push(r); });
+  const days=Object.entries(byDay).slice(-28);
+  return days.map(([ds,arr])=>{
+    const avg=arr.reduce((a,r)=>a+r.sys,0)/arr.length;
+    const avgD=arr.reduce((a,r)=>a+r.dia,0)/arr.length;
+    const st=avg>=135||avgD>=85?2:avg>=120||avgD>=80?1:0;
+    const col=st===2?'#dc2626':st===1?'#d97706':'#16a34a';
+    return `<span style="background:${col}" title="${ds} 均值 ${Math.round(avg)}/${Math.round(avgD)}">${ds.split('-')[1]}</span>`;
+  }).join('');
+}
+
+// ---------- 渲染 ----------
+const $=id=>document.getElementById(id);
+function render(){
+  const r=[...document.querySelectorAll('#rangeChips .on')][0].dataset.r;
+  $('chartA').innerHTML=lineChart(byRange(r));
+}
+document.querySelectorAll('#rangeChips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#rangeChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');render();});
+$('chartA2').innerHTML=lineChart(READINGS.slice(-14));
+$('chartB').innerHTML=scatter(READINGS);
+$('chartC').innerHTML=bars();
+const rate=Math.round(READINGS.filter(r=>controlled(r.sys,r.dia)).length/READINGS.length*100);
+$('donut').innerHTML=donut(rate);
+$('dist').innerHTML=dist();
+$('cal').innerHTML=calendar();
+$('reportChart').innerHTML=lineChart(READINGS.slice(-30));
+render();
+</script>
+</body>
+</html>

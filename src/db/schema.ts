@@ -30,6 +30,11 @@ export const medications = sqliteTable('medications', {
   timeOfDay: text('time_of_day').notNull().default(''),
   // 计划时间 HH:mm（按时间排待办用，见 #11）
   time: text('time'),
+  // 多时段打卡：[{stage:'早晨'|'中午'|'晚上'|'睡前', time:'HH:mm'}]（见 #13）
+  stages: text('stages', { mode: 'json' })
+    .$type<{ stage: string; time: string }[]>()
+    .notNull()
+    .default(sql`'[]'`),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
   createdAt: integer('created_at').notNull(),
 })
@@ -39,6 +44,8 @@ export const medLog = sqliteTable('med_log', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   // 不加外键约束，归属在应用层校验（参考 multica 惯例）。
   medId: integer('med_id').notNull(),
+  // 打卡对应的时段（早晨/中午/晚上/睡前，见 #13）
+  stage: text('stage'),
   // YYYY-MM-DD，便于按日去重查询
   takenDate: text('taken_date').notNull(),
   takenAt: integer('taken_at').notNull(),

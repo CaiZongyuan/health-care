@@ -2,22 +2,13 @@ import { createServerFn } from '@tanstack/react-start'
 import { desc } from 'drizzle-orm'
 import { env } from 'cloudflare:workers'
 import { bpRecords, createDb, type BpRecord } from '~/db'
-import { average, controlRate } from '~/lib/bp'
 
-/** 趋势数据：近 30 次统计 + 近 7 次折线（升序）+ 历史（近 50 条，倒序）。 */
+/** 全部血压记录（倒序）。区间筛选与统计交给客户端，支持任意范围切换。 */
 export const getTrendsData = createServerFn().handler(async () => {
   const db = createDb(env.DB)
-  const all = (await db
+  const readings = (await db
     .select()
     .from(bpRecords)
     .orderBy(desc(bpRecords.measuredAt))) as BpRecord[]
-  const last30 = all.slice(0, 30)
-  const chart = last30.slice(0, 7).slice().reverse()
-  return {
-    average: average(last30),
-    controlRate: controlRate(last30),
-    window: Math.min(30, last30.length),
-    chart,
-    history: all.slice(0, 50),
-  }
+  return { readings }
 })

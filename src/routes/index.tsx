@@ -17,6 +17,7 @@ import { getBpStatus } from '~/lib/bp'
 import { formatDateTime } from '~/lib/datetime'
 
 const SYMPTOMS = ['头晕', '恶心', '呕吐', '头痛', '乏力', '心悸', '胸闷']
+const MED_STAGES = ['早晨', '中午', '晚上', '睡前'] as const
 
 /** 当前本地时间，datetime-local 控件格式（YYYY-MM-DDTHH:mm）。 */
 function nowLocalInput() {
@@ -55,7 +56,7 @@ function HomePage() {
   const [showAddMed, setShowAddMed] = useState(false)
   const [medName, setMedName] = useState('')
   const [medDosage, setMedDosage] = useState('')
-  const [medTime, setMedTime] = useState('')
+  const [medStages, setMedStages] = useState<string[]>([])
   const [addingMed, setAddingMed] = useState(false)
 
   // AI 小结
@@ -64,7 +65,7 @@ function HomePage() {
   )
   const [summarizing, setSummarizing] = useState(false)
 
-  const takenSet = new Set(data.meds.takenIds)
+  const takenSet = new Set(data.meds.taken.map((t) => `${t.medId}|${t.stage}`))
 
   const toggleSymptom = (s: string) =>
     setSymptoms((prev) =>
@@ -107,9 +108,9 @@ function HomePage() {
     }
   }
 
-  const onToggleMed = async (medId: number) => {
+  const onToggleMed = async (medId: number, stage: string) => {
     try {
-      await toggleMedTaken({ data: { medId } })
+      await toggleMedTaken({ data: { medId, stage } })
       await router.invalidate()
     } catch {
       /* ignore */
@@ -121,11 +122,15 @@ function HomePage() {
     setAddingMed(true)
     try {
       await addMedication({
-        data: { name: medName, dosage: medDosage, time: medTime, timeOfDay: '' },
+        data: {
+          name: medName,
+          dosage: medDosage,
+          stages: medStages.map((stage) => ({ stage, time: '' })),
+        },
       })
       setMedName('')
       setMedDosage('')
-      setMedTime('')
+      setMedStages([])
       setShowAddMed(false)
       await router.invalidate()
     } finally {
@@ -327,56 +332,72 @@ function HomePage() {
         </CardContent>
       </Card>
 
-      {/* 今日用药 */}
+      {/* 今日用药（按时段分组） */}
       <Card>
         <CardHeader>
           <CardTitle>今日用药</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {data.meds.meds.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               还没有用药，添加一条吧。
             </p>
           ) : (
-            <div className="space-y-2">
-              {data.meds.meds.map((m) => {
-                const taken = takenSet.has(m.id)
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => onToggleMed(m.id)}
-                    className={`flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition ${
-                      taken
-                        ? 'border-green-200 bg-green-50'
-                        : 'border-border bg-background'
-                    }`}
-                  >
-                    <span
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs text-white ${
-                        taken
-                          ? 'border-green-500 bg-green-500'
-                          : 'border-muted-foreground/30'
-                      }`}
-                    >
-                      {taken ? '✓' : ''}
-                    </span>
-                    <span className="flex-1">
-                      <span
-                        className={`block font-bold ${
-                          taken ? 'text-muted-foreground line-through' : ''
-                        }`}
-                      >
-                        {m.name}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {[m.time, m.dosage].filter(Boolean).join(' · ')}
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+            MED_STAGES.map((stage) => {
+              const slots = data.meds.meds.flatMap((m) =>
+                (m.stages ?? [])
+                  .filter((s) => s.stage === stage)
+                  .map((s) => ({ med: m, time: s.time })),
+              )
+              if (slots.length === 0) return null
+              return (
+                <div key={stage}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="text-sm font-bold">{stage}</span>
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                  <div className="space-y-2">
+                    {slots.map(({ med, time }) => {
+                      const taken = takenSet.has(`${med.id}|${stage}`)
+                      return (
+                        <button
+                          key={`${med.id}-${stage}`}
+                          type="button"
+                          onClick={() => onToggleMed(med.id, stage)}
+                          className={`flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition ${
+                            taken
+                              ? 'border-green-200 bg-green-50'
+                              : 'border-border bg-background'
+                          }`}
+                        >
+                          <span
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs text-white ${
+                              taken
+                                ? 'border-green-500 bg-green-500'
+                                : 'border-muted-foreground/30'
+                            }`}
+                          >
+                            {taken ? '✓' : ''}
+                          </span>
+                          <span className="flex-1">
+                            <span
+                              className={`block font-bold ${
+                                taken ? 'text-muted-foreground line-through' : ''
+                              }`}
+                            >
+                              {med.name}
+                            </span>
+                            <span className="block text-xs text-muted-foreground">
+                              {[time, med.dosage].filter(Boolean).join(' · ')}
+                            </span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })
           )}
 
           {!showAddMed ? (
@@ -402,32 +423,47 @@ function HomePage() {
                   placeholder="如 硝苯地平控释片"
                 />
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Label className="mb-1 block text-xs text-muted-foreground">
-                    剂量
-                  </Label>
-                  <Input
-                    value={medDosage}
-                    onChange={(e) => setMedDosage(e.target.value)}
-                    placeholder="如 1片(30mg)"
-                  />
-                </div>
-                <div className="flex-1">
-                  <Label className="mb-1 block text-xs text-muted-foreground">
-                    时间
-                  </Label>
-                  <Input
-                    type="time"
-                    value={medTime}
-                    onChange={(e) => setMedTime(e.target.value)}
-                  />
+              <div>
+                <Label className="mb-1 block text-xs text-muted-foreground">
+                  剂量
+                </Label>
+                <Input
+                  value={medDosage}
+                  onChange={(e) => setMedDosage(e.target.value)}
+                  placeholder="如 1片(30mg)"
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-muted-foreground">
+                  服用时段（一天多次请多选）
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {MED_STAGES.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() =>
+                        setMedStages((prev) =>
+                          prev.includes(s)
+                            ? prev.filter((x) => x !== s)
+                            : [...prev, s],
+                        )
+                      }
+                      className={
+                        medStages.includes(s)
+                          ? 'rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground'
+                          : 'rounded-full border border-border bg-background px-4 py-2 text-sm text-muted-foreground'
+                      }
+                    >
+                      {s}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="flex gap-2">
                 <Button
                   type="submit"
-                  disabled={addingMed || !medName}
+                  disabled={addingMed || !medName || medStages.length === 0}
                   className="flex-1"
                 >
                   {addingMed ? '添加中…' : '添加'}
