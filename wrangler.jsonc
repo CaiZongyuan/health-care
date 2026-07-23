@@ -7,5 +7,15 @@
   "main": "@tanstack/react-start/server-entry",
   "observability": {
     "enabled": true
-  }
+  },
+  // D1 主存储（决策 08）。database_id 为本地占位；
+  // 创建远程库（部署阶段）后替换为真实 id。
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "health-care",
+      "database_id": "local-dev-placeholder",
+      "migrations_dir": "migrations"
+    }
+  ]
 }
