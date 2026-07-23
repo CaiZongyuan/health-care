@@ -5,6 +5,11 @@
   "compatibility_date": "2026-07-23",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "vars": {
+    // 智谱 GLM 模型 id（OpenAI 兼容端点，决策 07）。
+    // ZHIPU_API_KEY 走 secret：本地 .dev.vars，生产 `wrangler secret put ZHIPU_API_KEY`（类型见 src/types/env.d.ts）。
+    "ZHIPU_MODEL": "glm-4.7"
+  },
   "observability": {
     "enabled": true
   },
