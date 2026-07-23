@@ -19,7 +19,7 @@
     {
       "binding": "DB",
       "database_name": "health-care",
-      "database_id": "local-dev-placeholder",
+      "database_id": "1a393365-2c0b-43be-98dd-d2767022cd4f",
       "migrations_dir": "migrations"
     }
   ]
