@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { getHomeData, saveBpRecord } from '~/server/records'
+import { addMedication, getTodayMeds, toggleMedTaken } from '~/server/meds'
 import { Button } from '~/components/ui/button'
 import {
   Card,
@@ -12,25 +13,23 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Textarea } from '~/components/ui/textarea'
 import { getBpStatus } from '~/lib/bp'
+import { formatDateTime } from '~/lib/datetime'
 
 const SYMPTOMS = ['头晕', '恶心', '呕吐', '头痛', '乏力', '心悸', '胸闷']
 
 export const Route = createFileRoute('/')({
   component: HomePage,
-  loader: async () => await getHomeData(),
+  loader: async () => {
+    const [home, meds] = await Promise.all([getHomeData(), getTodayMeds()])
+    return { ...home, meds }
+  },
 })
-
-function formatTime(ms: number) {
-  const d = new Date(ms)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(
-    d.getMinutes(),
-  )}`
-}
 
 function HomePage() {
   const router = useRouter()
   const data = Route.useLoaderData()
+
+  // 血压记录表单
   const [sys, setSys] = useState('')
   const [dia, setDia] = useState('')
   const [hr, setHr] = useState('')
@@ -40,6 +39,15 @@ function HomePage() {
   const [showMore, setShowMore] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  // 用药
+  const [showAddMed, setShowAddMed] = useState(false)
+  const [medName, setMedName] = useState('')
+  const [medDosage, setMedDosage] = useState('')
+  const [medTime, setMedTime] = useState('')
+  const [addingMed, setAddingMed] = useState(false)
+
+  const takenSet = new Set(data.meds.takenIds)
 
   const toggleSymptom = (s: string) =>
     setSymptoms((prev) =>
@@ -69,7 +77,6 @@ function HomePage() {
           spo2: spo2 ? Number(spo2) : null,
           symptoms,
           notes,
-          isMorning: new Date().getHours() < 11,
         },
       })
       reset()
@@ -78,6 +85,32 @@ function HomePage() {
       setError(err instanceof Error ? err.message : '保存失败')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const onToggleMed = async (medId: number) => {
+    try {
+      await toggleMedTaken({ data: { medId } })
+      await router.invalidate()
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const onAddMed = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAddingMed(true)
+    try {
+      await addMedication({
+        data: { name: medName, dosage: medDosage, timeOfDay: medTime },
+      })
+      setMedName('')
+      setMedDosage('')
+      setMedTime('')
+      setShowAddMed(false)
+      await router.invalidate()
+    } finally {
+      setAddingMed(false)
     }
   }
 
@@ -90,6 +123,7 @@ function HomePage() {
         </p>
       </header>
 
+      {/* 记录血压 */}
       <Card>
         <CardHeader>
           <CardTitle>记录当前血压</CardTitle>
@@ -198,7 +232,6 @@ function HomePage() {
             )}
 
             {error && <p className="text-sm text-destructive">{error}</p>}
-
             <Button
               type="submit"
               disabled={saving || !sys || !dia}
@@ -210,6 +243,127 @@ function HomePage() {
         </CardContent>
       </Card>
 
+      {/* 今日用药 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>今日用药</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {data.meds.meds.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              还没有用药，添加一条吧。
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {data.meds.meds.map((m) => {
+                const taken = takenSet.has(m.id)
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => onToggleMed(m.id)}
+                    className={`flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition ${
+                      taken
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-border bg-background'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs text-white ${
+                        taken
+                          ? 'border-green-500 bg-green-500'
+                          : 'border-muted-foreground/30'
+                      }`}
+                    >
+                      {taken ? '✓' : ''}
+                    </span>
+                    <span className="flex-1">
+                      <span
+                        className={`block font-bold ${
+                          taken ? 'text-muted-foreground line-through' : ''
+                        }`}
+                      >
+                        {m.name}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {[m.timeOfDay, m.dosage]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {!showAddMed ? (
+            <button
+              type="button"
+              onClick={() => setShowAddMed(true)}
+              className="w-full rounded-md py-2 text-sm text-primary hover:bg-muted"
+            >
+              + 添加用药
+            </button>
+          ) : (
+            <form
+              onSubmit={onAddMed}
+              className="space-y-3 rounded-xl border border-border p-3"
+            >
+              <div>
+                <Label className="mb-1 block text-xs text-muted-foreground">
+                  药品名称
+                </Label>
+                <Input
+                  value={medName}
+                  onChange={(e) => setMedName(e.target.value)}
+                  placeholder="如 硝苯地平控释片"
+                />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Label className="mb-1 block text-xs text-muted-foreground">
+                    剂量
+                  </Label>
+                  <Input
+                    value={medDosage}
+                    onChange={(e) => setMedDosage(e.target.value)}
+                    placeholder="如 1片(30mg)"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label className="mb-1 block text-xs text-muted-foreground">
+                    时段
+                  </Label>
+                  <Input
+                    value={medTime}
+                    onChange={(e) => setMedTime(e.target.value)}
+                    placeholder="如 早晨"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={addingMed || !medName}
+                  className="flex-1"
+                >
+                  {addingMed ? '添加中…' : '添加'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAddMed(false)}
+                >
+                  取消
+                </Button>
+              </div>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 最近记录 */}
       <section>
         <h2 className="mb-2 px-1 text-lg font-bold">最近记录</h2>
         {data.recent.length === 0 ? (
@@ -223,7 +377,7 @@ function HomePage() {
                 <CardContent className="flex items-center justify-between py-3">
                   <div>
                     <div className="text-xs text-muted-foreground">
-                      {formatTime(r.measuredAt)}
+                      {formatDateTime(r.measuredAt)}
                       {r.isMorning ? ' · 晨' : ''}
                     </div>
                     <div className="mt-0.5 flex items-center gap-2">

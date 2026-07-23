@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { count, desc } from 'drizzle-orm'
 import { env } from 'cloudflare:workers'
 import { bpRecords, createDb, type BpRecord } from '~/db'
+import { isMorningNow } from '~/lib/datetime'
 
 /** 首页数据：总数 + 最近 7 条。 */
 export const getHomeData = createServerFn().handler(async () => {
@@ -23,10 +24,9 @@ export type SaveBpInput = {
   spo2: number | null
   symptoms: string[]
   notes: string
-  isMorning: boolean
 }
 
-/** 保存一条血压记录（校验高/低压必填且有效）。 */
+/** 保存一条血压记录（校验高/低压必填且有效）。isMorning 由服务端按上海时区判定。 */
 export const saveBpRecord = createServerFn()
   .validator((d: unknown): SaveBpInput => {
     const v = (d ?? {}) as Record<string, unknown>
@@ -41,7 +41,6 @@ export const saveBpRecord = createServerFn()
       ? v.symptoms.filter((s): s is string => typeof s === 'string')
       : []
     const notes = typeof v.notes === 'string' ? v.notes : ''
-    const isMorning = v.isMorning === true
     return {
       sys,
       dia,
@@ -49,14 +48,13 @@ export const saveBpRecord = createServerFn()
       spo2: toNumOrNull(v.spo2),
       symptoms,
       notes,
-      isMorning,
     }
   })
   .handler(async ({ data }) => {
     const db = createDb(env.DB)
     await db.insert(bpRecords).values({
       measuredAt: Date.now(),
-      isMorning: data.isMorning,
+      isMorning: isMorningNow(),
       sys: data.sys,
       dia: data.dia,
       hr: data.hr,
