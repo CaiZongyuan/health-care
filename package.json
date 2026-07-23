@@ -12,6 +12,7 @@
     "postinstall": "WRANGLER_LOG=warn pnpm run --silent cf-typegen",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply health-care --local",
+    "db:migrate:remote": "wrangler d1 migrations apply health-care --remote",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
