@@ -4,7 +4,11 @@
   // 今天日期（2026-07-23）
   "compatibility_date": "2026-07-23",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/server.ts",
+  "triggers": {
+    // 每日 00:00 UTC（上海 08:00）触发 AI 小结自动生成；scheduled 按设置决定是否跑
+    "crons": ["0 0 * * *"]
+  },
   "vars": {
     // 智谱 GLM 模型 id（OpenAI 兼容端点，决策 07）。
     // ZHIPU_API_KEY 走 secret：本地 .dev.vars，生产 `wrangler secret put ZHIPU_API_KEY`（类型见 src/types/env.d.ts）。

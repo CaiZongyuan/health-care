@@ -14,6 +14,7 @@ export {
   medications,
   medLog,
   profile,
+  aiSummaries,
 } from './schema'
 export type {
   BpRecord,
@@ -22,4 +23,5 @@ export type {
   NewMedication,
   MedLog,
   Profile,
+  AiSummary,
 } from './schema'

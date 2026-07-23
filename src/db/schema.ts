@@ -26,8 +26,10 @@ export const medications = sqliteTable('medications', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   dosage: text('dosage').notNull().default(''),
-  // 时段：如 "早晨" / "睡前" / "08:00"
+  // 时段标签：如 "早晨" / "睡前"
   timeOfDay: text('time_of_day').notNull().default(''),
+  // 计划时间 HH:mm（按时间排待办用，见 #11）
+  time: text('time'),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
   createdAt: integer('created_at').notNull(),
 })
@@ -40,6 +42,15 @@ export const medLog = sqliteTable('med_log', {
   // YYYY-MM-DD，便于按日去重查询
   takenDate: text('taken_date').notNull(),
   takenAt: integer('taken_at').notNull(),
+})
+
+/** AI 健康小结历史（每次生成存一条，见 #10）。 */
+export const aiSummaries = sqliteTable('ai_summaries', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  createdAt: integer('created_at').notNull(),
+  // 'manual'（手动）| 'auto'（定时）
+  trigger: text('trigger').notNull().default('manual'),
+  content: text('content').notNull(),
 })
 
 /** 长期档案 key/value：身高/体重/既往病史/长期用药/紧急联系人等（见 #7）。 */
@@ -55,3 +66,4 @@ export type Medication = typeof medications.$inferSelect
 export type NewMedication = typeof medications.$inferInsert
 export type MedLog = typeof medLog.$inferSelect
 export type Profile = typeof profile.$inferSelect
+export type AiSummary = typeof aiSummaries.$inferSelect

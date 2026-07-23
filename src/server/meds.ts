@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { env } from 'cloudflare:workers'
 import { createDb, medications, medLog, type Medication } from '~/db'
 import { todayStr } from '~/lib/datetime'
@@ -13,7 +13,11 @@ export const getTodayMeds = createServerFn().handler(async () => {
       .select()
       .from(medications)
       .where(eq(medications.active, true))
-      .orderBy(medications.id),
+      .orderBy(
+        sql`CASE WHEN ${medications.time} IS NULL OR ${medications.time} = '' THEN 1 ELSE 0 END`,
+        medications.time,
+        medications.id,
+      ),
     db.select().from(medLog).where(eq(medLog.takenDate, today)),
   ])
   const takenIds = Array.from(new Set(logs.map((l) => l.medId)))
@@ -55,6 +59,7 @@ export type AddMedInput = {
   name: string
   dosage: string
   timeOfDay: string
+  time: string
 }
 
 /** 添加一条长期用药（默认 active）。 */
@@ -67,6 +72,7 @@ export const addMedication = createServerFn()
       name,
       dosage: typeof v.dosage === 'string' ? v.dosage.trim() : '',
       timeOfDay: typeof v.timeOfDay === 'string' ? v.timeOfDay.trim() : '',
+      time: typeof v.time === 'string' ? v.time.trim() : '',
     }
   })
   .handler(async ({ data }) => {

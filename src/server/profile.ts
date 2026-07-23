@@ -1,18 +1,32 @@
 import { createServerFn } from '@tanstack/react-start'
-import { eq } from 'drizzle-orm'
+import { count, desc, eq } from 'drizzle-orm'
 import { env } from 'cloudflare:workers'
-import { createDb, medications, profile, type Medication } from '~/db'
+import {
+  aiSummaries,
+  createDb,
+  medications,
+  profile,
+  type AiSummary,
+  type Medication,
+} from '~/db'
 
 /** 我的页数据：长期档案（key/value）+ 全部用药（含停用）。 */
 export const getProfileData = createServerFn().handler(async () => {
   const db = createDb(env.DB)
-  const [rows, meds] = await Promise.all([
+  const [rows, meds, aiList, [aiC]] = await Promise.all([
     db.select().from(profile),
     db.select().from(medications).orderBy(medications.id),
+    db.select().from(aiSummaries).orderBy(desc(aiSummaries.createdAt)).limit(20),
+    db.select({ value: count() }).from(aiSummaries),
   ])
   const p: Record<string, string> = {}
   for (const r of rows) p[r.key] = r.value
-  return { profile: p, meds: meds as Medication[] }
+  return {
+    profile: p,
+    meds: meds as Medication[],
+    aiCount: Number(aiC?.value ?? 0),
+    aiHistory: aiList as AiSummary[],
+  }
 })
 
 export type ProfilePatch = Record<string, string>

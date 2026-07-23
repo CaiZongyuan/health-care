@@ -18,6 +18,15 @@ import { formatDateTime } from '~/lib/datetime'
 
 const SYMPTOMS = ['头晕', '恶心', '呕吐', '头痛', '乏力', '心悸', '胸闷']
 
+/** 当前本地时间，datetime-local 控件格式（YYYY-MM-DDTHH:mm）。 */
+function nowLocalInput() {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+    d.getDate(),
+  )}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export const Route = createFileRoute('/')({
   component: HomePage,
   loader: async () => {
@@ -40,6 +49,7 @@ function HomePage() {
   const [showMore, setShowMore] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [measuredAt, setMeasuredAt] = useState(() => nowLocalInput())
 
   // 用药
   const [showAddMed, setShowAddMed] = useState(false)
@@ -69,6 +79,7 @@ function HomePage() {
     setSymptoms([])
     setNotes('')
     setShowMore(false)
+    setMeasuredAt(nowLocalInput())
   }
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -78,6 +89,7 @@ function HomePage() {
     try {
       await saveBpRecord({
         data: {
+          measuredAt: measuredAt ? new Date(measuredAt).getTime() : Date.now(),
           sys: Number(sys),
           dia: Number(dia),
           hr: hr ? Number(hr) : null,
@@ -109,7 +121,7 @@ function HomePage() {
     setAddingMed(true)
     try {
       await addMedication({
-        data: { name: medName, dosage: medDosage, timeOfDay: medTime },
+        data: { name: medName, dosage: medDosage, time: medTime, timeOfDay: '' },
       })
       setMedName('')
       setMedDosage('')
@@ -181,6 +193,27 @@ function HomePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-5">
+            <div>
+              <Label className="mb-2 block text-sm text-muted-foreground">
+                测量时间（可补记）
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  type="datetime-local"
+                  value={measuredAt}
+                  onChange={(e) => setMeasuredAt(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMeasuredAt(nowLocalInput())}
+                >
+                  现在
+                </Button>
+              </div>
+            </div>
             <div className="flex items-end gap-3">
               <div className="flex-1">
                 <Label className="mb-2 block text-sm text-muted-foreground">
@@ -337,9 +370,7 @@ function HomePage() {
                         {m.name}
                       </span>
                       <span className="block text-xs text-muted-foreground">
-                        {[m.timeOfDay, m.dosage]
-                          .filter(Boolean)
-                          .join(' · ')}
+                        {[m.time, m.dosage].filter(Boolean).join(' · ')}
                       </span>
                     </span>
                   </button>
@@ -384,12 +415,12 @@ function HomePage() {
                 </div>
                 <div className="flex-1">
                   <Label className="mb-1 block text-xs text-muted-foreground">
-                    时段
+                    时间
                   </Label>
                   <Input
+                    type="time"
                     value={medTime}
                     onChange={(e) => setMedTime(e.target.value)}
-                    placeholder="如 早晨"
                   />
                 </div>
               </div>

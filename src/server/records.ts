@@ -18,6 +18,7 @@ export const getHomeData = createServerFn().handler(async () => {
 })
 
 export type SaveBpInput = {
+  measuredAt: number
   sys: number
   dia: number
   hr: number | null
@@ -41,7 +42,12 @@ export const saveBpRecord = createServerFn()
       ? v.symptoms.filter((s): s is string => typeof s === 'string')
       : []
     const notes = typeof v.notes === 'string' ? v.notes : ''
+    const measuredAt =
+      Number.isFinite(Number(v.measuredAt)) && Number(v.measuredAt) > 0
+        ? Number(v.measuredAt)
+        : Date.now()
     return {
+      measuredAt,
       sys,
       dia,
       hr: toNumOrNull(v.hr),
@@ -53,8 +59,8 @@ export const saveBpRecord = createServerFn()
   .handler(async ({ data }) => {
     const db = createDb(env.DB)
     await db.insert(bpRecords).values({
-      measuredAt: Date.now(),
-      isMorning: isMorningNow(),
+      measuredAt: data.measuredAt,
+      isMorning: isMorningNow(new Date(data.measuredAt)),
       sys: data.sys,
       dia: data.dia,
       hr: data.hr,
