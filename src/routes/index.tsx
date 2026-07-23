@@ -11,6 +11,7 @@ import {
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Textarea } from '~/components/ui/textarea'
+import { getBpStatus } from '~/lib/bp'
 
 const SYMPTOMS = ['头晕', '恶心', '呕吐', '头痛', '乏力', '心悸', '胸闷']
 
@@ -225,8 +226,18 @@ function HomePage() {
                       {formatTime(r.measuredAt)}
                       {r.isMorning ? ' · 晨' : ''}
                     </div>
-                    <div className="mt-0.5 text-2xl font-bold">
-                      {r.sys}/{r.dia}
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <span className="text-2xl font-bold">
+                        {r.sys}/{r.dia}
+                      </span>
+                      <span
+                        className={`rounded-md border px-2 py-0.5 text-xs ${getBpStatus(
+                          r.sys,
+                          r.dia,
+                        ).className}`}
+                      >
+                        {getBpStatus(r.sys, r.dia).label}
+                      </span>
                     </div>
                     {(r.symptoms.length > 0 || r.notes) && (
                       <div className="mt-1 text-sm text-muted-foreground">
