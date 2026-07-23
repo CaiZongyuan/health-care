@@ -1,0 +1,11 @@
+node_modules
+.DS_Store
+.cache
+.env
+dist
+.wrangler
+
+# generated / build
+worker-configuration.d.ts
+.output/
+*.log
