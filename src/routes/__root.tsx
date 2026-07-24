@@ -4,6 +4,7 @@ import {
   Link,
   Scripts,
   createRootRoute,
+  redirect,
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -11,8 +12,16 @@ import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
+import { checkAuth } from '~/server/auth'
 
 export const Route = createRootRoute({
+  beforeLoad: async ({ location }) => {
+    if (location.pathname === '/login') return
+    const user = await checkAuth()
+    if (!user) {
+      throw redirect({ to: '/login' })
+    }
+  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -36,6 +45,20 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  if (pathname === '/login') {
+    return (
+      <html lang="zh-CN">
+        <head>
+          <HeadContent />
+        </head>
+        <body className="bg-gray-100">
+          {children}
+          <Scripts />
+        </body>
+      </html>
+    )
+  }
   return (
     <html lang="zh-CN">
       <head>

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 // 单用户个人自用：不带 user_id。多用户/认证阶段再加归属维度（见 .scratch 决策 05/09）。
 
@@ -40,15 +40,38 @@ export const medications = sqliteTable('medications', {
 })
 
 /** 用药打卡：某药某日是否已服（见 #4）。 */
-export const medLog = sqliteTable('med_log', {
+export const medLog = sqliteTable(
+  'med_log',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    // 不加外键约束，归属在应用层校验（参考 multica 惯例）。
+    medId: integer('med_id').notNull(),
+    // 打卡对应的时段（早晨/中午/晚上/睡前，见 #13）
+    stage: text('stage'),
+    // YYYY-MM-DD，便于按日去重查询
+    takenDate: text('taken_date').notNull(),
+    takenAt: integer('taken_at').notNull(),
+  },
+  (t) => ({
+    // review #15：幂等 + 唯一，防止重复打卡
+    uniq: uniqueIndex('med_log_uniq').on(t.medId, t.stage, t.takenDate),
+  }),
+)
+
+/** 用户（单用户，不开放注册；见 认证体系）。 */
+export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  // 不加外键约束，归属在应用层校验（参考 multica 惯例）。
-  medId: integer('med_id').notNull(),
-  // 打卡对应的时段（早晨/中午/晚上/睡前，见 #13）
-  stage: text('stage'),
-  // YYYY-MM-DD，便于按日去重查询
-  takenDate: text('taken_date').notNull(),
-  takenAt: integer('taken_at').notNull(),
+  username: text('username').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  salt: text('salt').notNull(),
+  createdAt: integer('created_at').notNull(),
+})
+
+/** 会话（token → username）。 */
+export const sessions = sqliteTable('sessions', {
+  token: text('token').primaryKey(),
+  username: text('username').notNull(),
+  expiresAt: integer('expires_at').notNull(),
 })
 
 /** AI 健康小结历史（每次生成存一条，见 #10）。 */
@@ -74,3 +97,5 @@ export type NewMedication = typeof medications.$inferInsert
 export type MedLog = typeof medLog.$inferSelect
 export type Profile = typeof profile.$inferSelect
 export type AiSummary = typeof aiSummaries.$inferSelect
+export type User = typeof users.$inferSelect
+export type Session = typeof sessions.$inferSelect

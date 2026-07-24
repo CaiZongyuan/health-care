@@ -15,6 +15,8 @@ export {
   medLog,
   profile,
   aiSummaries,
+  users,
+  sessions,
 } from './schema'
 export type {
   BpRecord,
@@ -24,4 +26,6 @@ export type {
   MedLog,
   Profile,
   AiSummary,
+  User,
+  Session,
 } from './schema'
