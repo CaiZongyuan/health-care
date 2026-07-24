@@ -35,6 +35,21 @@ export const listModels = createServerFn()
       : buildModelsUrlCandidates(data.baseURL)
     let lastErr: unknown = null
     for (const url of urls) {
+      // review #16: SSRF 防护——拒绝内网/本地地址
+      try {
+        const parsed = new URL(url)
+        const h = parsed.hostname.toLowerCase()
+        if (
+          /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.)/.test(h) ||
+          h === '::1' ||
+          h.startsWith('fc') ||
+          h.startsWith('fe80')
+        ) {
+          throw new Error(`不允许访问内网地址: ${h}`)
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.startsWith('不允许')) throw e
+      }
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${data.apiKey}` },
       })
