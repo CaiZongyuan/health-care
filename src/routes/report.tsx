@@ -89,14 +89,6 @@ function ReportPage() {
               <th className="text-left text-gray-500">病史</th>
               <td colSpan={3}>{d.profile.history || '—'}</td>
             </tr>
-            <tr>
-              <th className="text-left text-gray-500">紧急联系</th>
-              <td colSpan={3}>
-                {[d.profile.emergency_name, d.profile.emergency_phone]
-                  .filter(Boolean)
-                  .join(' ') || '—'}
-              </td>
-            </tr>
           </tbody>
         </table>
 

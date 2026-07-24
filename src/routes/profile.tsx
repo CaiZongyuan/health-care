@@ -36,8 +36,6 @@ function ProfilePage() {
   const [height, setHeight] = useState(d.profile.height ?? '')
   const [weight, setWeight] = useState(d.profile.weight ?? '')
   const [history, setHistory] = useState(d.profile.history ?? '')
-  const [emName, setEmName] = useState(d.profile.emergency_name ?? '')
-  const [emPhone, setEmPhone] = useState(d.profile.emergency_phone ?? '')
   const [savedKey, setSavedKey] = useState('')
 
   const [showAdd, setShowAdd] = useState(false)
@@ -59,11 +57,6 @@ function ProfilePage() {
     await saveProfile({ data: { history } })
     await router.invalidate()
     flash('history')
-  }
-  const saveEmergency = async () => {
-    await saveProfile({ data: { emergency_name: emName, emergency_phone: emPhone } })
-    await router.invalidate()
-    flash('emergency')
   }
 
   const onAddMed = async (e: React.FormEvent) => {
@@ -130,41 +123,6 @@ function ProfilePage() {
           />
           <Button onClick={saveHistory} variant="outline" className="w-full">
             {savedKey === 'history' ? '已保存 ✓' : '保存病史'}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* 紧急联系人 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>紧急联系人（家属）</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Label className="mb-1 block text-xs text-muted-foreground">
-                姓名
-              </Label>
-              <Input
-                value={emName}
-                onChange={(e) => setEmName(e.target.value)}
-                placeholder="如 儿子"
-              />
-            </div>
-            <div className="flex-1">
-              <Label className="mb-1 block text-xs text-muted-foreground">
-                电话
-              </Label>
-              <Input
-                value={emPhone}
-                onChange={(e) => setEmPhone(e.target.value)}
-                inputMode="tel"
-                placeholder="如 138xxxxxxxx"
-              />
-            </div>
-          </div>
-          <Button onClick={saveEmergency} variant="outline" className="w-full">
-            {savedKey === 'emergency' ? '已保存 ✓' : '保存联系人'}
           </Button>
         </CardContent>
       </Card>

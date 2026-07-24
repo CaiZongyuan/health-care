@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getHomeData, saveBpRecord } from '~/server/records'
 import { addMedication, getTodayMeds, toggleMedTaken } from '~/server/meds'
 import { getAiSummary } from '~/server/ai'
@@ -65,7 +65,12 @@ function HomePage() {
   )
   const [summarizing, setSummarizing] = useState(false)
 
-  const takenSet = new Set(data.meds.taken.map((t) => `${t.medId}|${t.stage}`))
+  const [takenKeys, setTakenKeys] = useState<Set<string>>(
+    () => new Set(data.meds.taken.map((t) => `${t.medId}|${t.stage}`)),
+  )
+  useEffect(() => {
+    setTakenKeys(new Set(data.meds.taken.map((t) => `${t.medId}|${t.stage}`)))
+  }, [data.meds.taken])
 
   const toggleSymptom = (s: string) =>
     setSymptoms((prev) =>
@@ -109,11 +114,19 @@ function HomePage() {
   }
 
   const onToggleMed = async (medId: number, stage: string) => {
+    const key = `${medId}|${stage}`
+    const prev = new Set(takenKeys)
+    setTakenKeys((s) => {
+      const n = new Set(s)
+      if (n.has(key)) n.delete(key)
+      else n.add(key)
+      return n
+    })
     try {
       await toggleMedTaken({ data: { medId, stage } })
       await router.invalidate()
     } catch {
-      /* ignore */
+      setTakenKeys(prev)
     }
   }
 
@@ -358,7 +371,7 @@ function HomePage() {
                   </div>
                   <div className="space-y-2">
                     {slots.map(({ med, time }) => {
-                      const taken = takenSet.has(`${med.id}|${stage}`)
+                      const taken = takenKeys.has(`${med.id}|${stage}`)
                       return (
                         <button
                           key={`${med.id}-${stage}`}
