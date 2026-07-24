@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { getReportData } from '~/server/report'
 import { Button, buttonVariants } from '~/components/ui/button'
-import { BpLineChart, type ChartPoint } from '~/components/charts'
+import { BpDailyChart, type ChartPoint } from '~/components/charts'
 import { formatDateTime } from '~/lib/datetime'
 import { downloadBpCsv } from '~/lib/csv'
 import { getBpStatus } from '~/lib/bp'
@@ -99,7 +99,7 @@ function ReportPage() {
         </div>
 
         <div className="mb-1 text-xs text-gray-500">近 30 天血压趋势</div>
-        <BpLineChart points={points} />
+        <BpDailyChart points={points} />
 
         <div className="mb-1 mt-4 text-sm font-bold">需关注的读数（偏高/危象）</div>
         {d.highs.length === 0 ? (

@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
   BpBars,
   BpCalendar,
+  BpDailyChart,
   BpDist,
   BpDonut,
-  BpLineChart,
-  BpScatter,
+  BpScatterFit,
   type ChartPoint,
 } from '~/components/charts'
 import {
@@ -121,10 +121,10 @@ function TrendsPage() {
       {/* A 折线 */}
       <Card>
         <CardHeader>
-          <CardTitle>A · 趋势折线</CardTitle>
+          <CardTitle>A · 每日均值趋势（点击看数值）</CardTitle>
         </CardHeader>
         <CardContent>
-          <BpLineChart points={points} />
+          <BpDailyChart points={points} />
           <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
             <span>
               <span className="mr-1 inline-block h-2 w-2 rounded-full bg-red-500" />
@@ -145,10 +145,10 @@ function TrendsPage() {
       {/* B 散点 */}
       <Card>
         <CardHeader>
-          <CardTitle>B · 散点分布</CardTitle>
+          <CardTitle>B · 散点 + 趋势拟合</CardTitle>
         </CardHeader>
         <CardContent>
-          <BpScatter points={points} />
+          <BpScatterFit points={points} />
           <p className="mt-2 text-xs text-muted-foreground">
             每次一个点，颜色=达标情况；虚线=家庭高血压临界 135。
           </p>
