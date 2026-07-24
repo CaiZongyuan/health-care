@@ -153,16 +153,16 @@ function HomePage() {
         </p>
       </header>
 
-      {/* AI 健康小结 */}
-      {/* AI 健康小结（最近一次，只读） */}
+      {/* 智慧家庭医师观察建议 */}
+      {/* 智慧家庭医师观察建议（最近一次，只读） */}
       <Card>
         <CardHeader>
-          <CardTitle>AI 健康小结</CardTitle>
+          <CardTitle>智慧家庭医师观察建议</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {data.lastAiSummary ? (
             <>
-              <AiSummaryView content={data.lastAiSummary} />
+              <AiSummaryView content={data.lastAiSummary} collapsible />
               {data.lastAiAt && (
                 <p className="text-xs text-muted-foreground">
                   {formatDateTime(data.lastAiAt)} · 去「我的」可重新生成
@@ -174,7 +174,7 @@ function HomePage() {
             </>
           ) : (
             <p className="text-sm text-muted-foreground">
-              还没有 AI 小结。去「我的 → AI 健康小结」生成。
+              还没有观察建议。去「我的」生成。
             </p>
           )}
         </CardContent>

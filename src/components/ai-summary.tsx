@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 // AI 小结渲染：结构化 JSON（整体评估/关键发现/关注建议）三段，旧文本兜底纯文本。
 
 export type AiSummaryData = {
@@ -22,8 +24,16 @@ export function parseAiSummary(content: string): AiSummaryData | null {
   return null
 }
 
-export function AiSummaryView({ content }: { content: string }) {
+export function AiSummaryView({
+  content,
+  collapsible = false,
+}: {
+  content: string
+  collapsible?: boolean
+}) {
+  const [expanded, setExpanded] = useState(!collapsible)
   const data = parseAiSummary(content)
+
   if (!data) {
     return (
       <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
@@ -31,6 +41,23 @@ export function AiSummaryView({ content }: { content: string }) {
       </p>
     )
   }
+
+  // 折叠模式：只显示整体评估 + 展开按钮
+  if (!expanded) {
+    return (
+      <div className="space-y-2 text-sm leading-relaxed">
+        <p className="font-medium text-foreground">{data.整体评估}</p>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="text-xs text-primary hover:underline"
+        >
+          展开详情 ▼
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-2 text-sm leading-relaxed">
       <p className="font-medium text-foreground">{data.整体评估}</p>
@@ -53,6 +80,15 @@ export function AiSummaryView({ content }: { content: string }) {
             </li>
           ))}
         </ul>
+      )}
+      {collapsible && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="text-xs text-primary hover:underline"
+        >
+          收起 ▲
+        </button>
       )}
     </div>
   )

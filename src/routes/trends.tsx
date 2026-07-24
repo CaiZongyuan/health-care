@@ -47,6 +47,8 @@ export const Route = createFileRoute('/trends')({
 function TrendsPage() {
   const d = Route.useLoaderData()
   const [range, setRange] = useState<Range>('7次')
+  const [historyPage, setHistoryPage] = useState(0)
+  const [historyFilter, setHistoryFilter] = useState<string>('all')
   const all = d.readings
   const filtered = byRange(all, range)
   const points = filtered.map(toPoint)
@@ -56,6 +58,14 @@ function TrendsPage() {
     const lv = getBpStatus(r.sys, r.dia).level
     return lv === 'high' || lv === 'crisis'
   }).length
+
+  const FILTER_LABELS: Record<string, string> = {
+    all: '全部', healthy: '健康', acceptable: '尚可', high: '偏高', crisis: '危象', low: '偏低',
+  }
+  const filteredHistory = historyFilter === 'all' ? all : all.filter((r) => getBpStatus(r.sys, r.dia).level === historyFilter)
+  const PAGE_SIZE = 20
+  const historyPageCount = Math.ceil(filteredHistory.length / PAGE_SIZE)
+  const pageItems = filteredHistory.slice(historyPage * PAGE_SIZE, (historyPage + 1) * PAGE_SIZE)
 
   return (
     <div className="space-y-4 p-4 pt-6">
@@ -186,14 +196,29 @@ function TrendsPage() {
         </CardContent>
       </Card>
 
-      {/* 历史 */}
+      {/* 历史（分页 + 筛选） */}
       <section>
-        <h2 className="mb-2 px-1 text-lg font-bold">历史记录</h2>
+        <h2 className="mb-2 px-1 text-lg font-bold">历史记录（{filteredHistory.length} 条）</h2>
         {all.length === 0 ? (
           <p className="px-1 text-sm text-muted-foreground">还没有记录。</p>
         ) : (
-          <div className="space-y-2">
-            {all.slice(0, 50).map((r) => {
+          <>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {Object.entries(FILTER_LABELS).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => { setHistoryFilter(k); setHistoryPage(0) }}
+                  className={historyFilter === k
+                    ? 'rounded-full bg-primary px-3 py-1 text-xs text-primary-foreground'
+                    : 'rounded-full border border-border px-3 py-1 text-xs text-muted-foreground'}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {pageItems.map((r) => {
               const st = getBpStatus(r.sys, r.dia)
               const morning = isMorningHypertension(r)
               return (
@@ -237,6 +262,30 @@ function TrendsPage() {
               )
             })}
           </div>
+          {historyPageCount > 1 && (
+            <div className="flex items-center justify-between pt-3">
+              <button
+                type="button"
+                onClick={() => setHistoryPage((p) => Math.max(0, p - 1))}
+                disabled={historyPage === 0}
+                className="text-sm text-primary disabled:opacity-30"
+              >
+                ← 上一页
+              </button>
+              <span className="text-xs text-muted-foreground">
+                第 {historyPage + 1}/{historyPageCount} 页
+              </span>
+              <button
+                type="button"
+                onClick={() => setHistoryPage((p) => Math.min(historyPageCount - 1, p + 1))}
+                disabled={historyPage >= historyPageCount - 1}
+                className="text-sm text-primary disabled:opacity-30"
+              >
+                下一页 →
+              </button>
+            </div>
+          )}
+          </>
         )}
       </section>
     </div>

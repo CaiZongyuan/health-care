@@ -319,10 +319,10 @@ function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* AI 健康小结 */}
+      {/* 智慧家庭医师观察建议 */}
       <Card>
         <CardHeader>
-          <CardTitle>AI 健康小结</CardTitle>
+          <CardTitle>智慧家庭医师观察建议</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">已生成 {d.aiCount} 次</p>

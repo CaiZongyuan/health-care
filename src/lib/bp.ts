@@ -1,44 +1,29 @@
 // 血压分级（面向已确诊高血压患者）。
-// 危象 ≥170/110；偏高 ≥140/90；尚可 <140/90；偏低 <90/60。
+// 危象 ≥170/110；偏高 ≥140/90；尚可 120-139/80-89；健康 <120/80；偏低 <90/60。
 // 达标线（家庭血压）≤135/85 是更严格的控制目标（达标率用）。
-// 上线前须临床医生签字确认（个人自用阶段为提醒，非医疗建议）。
 
-export type BpLevel = 'low' | 'acceptable' | 'high' | 'crisis'
+export type BpLevel = 'low' | 'healthy' | 'acceptable' | 'high' | 'crisis'
 
 export type BpStatus = {
   level: BpLevel
   label: string
-  /** badge 的 tailwind 类（bg + text + border） */
   className: string
 }
 
 export function getBpStatus(sys: number, dia: number): BpStatus {
   if (sys >= 170 || dia >= 110) {
-    return {
-      level: 'crisis',
-      label: '危象·建议就医',
-      className: 'border-red-300 bg-red-100 text-red-700',
-    }
+    return { level: 'crisis', label: '危象·建议就医', className: 'border-red-300 bg-red-100 text-red-700' }
   }
   if (sys < 90 || dia < 60) {
-    return {
-      level: 'low',
-      label: '偏低',
-      className: 'border-yellow-200 bg-yellow-50 text-yellow-700',
-    }
+    return { level: 'low', label: '偏低', className: 'border-yellow-200 bg-yellow-50 text-yellow-700' }
   }
   if (sys >= 140 || dia >= 90) {
-    return {
-      level: 'high',
-      label: '偏高',
-      className: 'border-orange-200 bg-orange-50 text-orange-600',
-    }
+    return { level: 'high', label: '偏高', className: 'border-orange-200 bg-orange-50 text-orange-600' }
   }
-  return {
-    level: 'acceptable',
-    label: '尚可',
-    className: 'border-green-200 bg-green-50 text-green-600',
+  if (sys < 120 && dia < 80) {
+    return { level: 'healthy', label: '健康', className: 'border-green-300 bg-green-100 text-green-700' }
   }
+  return { level: 'acceptable', label: '尚可', className: 'border-blue-200 bg-blue-50 text-blue-600' }
 }
 
 /** 达标（家庭血压）：sys≤135 且 dia≤85。 */
