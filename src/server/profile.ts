@@ -21,8 +21,12 @@ export const getProfileData = createServerFn().handler(async () => {
   ])
   const p: Record<string, string> = {}
   for (const r of rows) p[r.key] = r.value
+  // review #14: 不把 API Key 明文返回给客户端
+  const hasAiKey = !!p.ai_api_key
+  delete p.ai_api_key
   return {
     profile: p,
+    hasAiKey,
     meds: meds as Medication[],
     aiCount: Number(aiC?.value ?? 0),
     aiHistory: aiList as AiSummary[],

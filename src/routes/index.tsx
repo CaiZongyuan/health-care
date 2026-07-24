@@ -2,7 +2,6 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { getHomeData, saveBpRecord } from '~/server/records'
 import { addMedication, getTodayMeds, toggleMedTaken } from '~/server/meds'
-import { getAiSummary } from '~/server/ai'
 import { AiSummaryView } from '~/components/ai-summary'
 import { Button } from '~/components/ui/button'
 import {
@@ -59,12 +58,6 @@ function HomePage() {
   const [medDosage, setMedDosage] = useState('')
   const [medStages, setMedStages] = useState<string[]>([])
   const [addingMed, setAddingMed] = useState(false)
-
-  // AI 小结
-  const [summary, setSummary] = useState<{ ok: boolean; summary: string } | null>(
-    null,
-  )
-  const [summarizing, setSummarizing] = useState(false)
 
   const [takenKeys, setTakenKeys] = useState<Set<string>>(
     () => new Set(data.meds.taken.map((t) => `${t.medId}|${t.stage}`)),
@@ -148,15 +141,6 @@ function HomePage() {
     }
   }
 
-  const onSummarize = async () => {
-    setSummarizing(true)
-    try {
-      setSummary(await getAiSummary())
-    } finally {
-      setSummarizing(false)
-    }
-  }
-
   return (
     <div className="space-y-4 p-4 pt-6">
       <header>
@@ -167,34 +151,28 @@ function HomePage() {
       </header>
 
       {/* AI 健康小结 */}
+      {/* AI 健康小结（最近一次，只读） */}
       <Card>
         <CardHeader>
           <CardTitle>AI 健康小结</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {summary ? (
+          {data.lastAiSummary ? (
             <>
-              <AiSummaryView content={summary.summary} />
+              <AiSummaryView content={data.lastAiSummary} />
+              {data.lastAiAt && (
+                <p className="text-xs text-muted-foreground">
+                  {formatDateTime(data.lastAiAt)} · 去「我的」可重新生成
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 ⚠️ AI 生成的健康提醒，非医疗诊断；如有不适请咨询医生。
               </p>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={onSummarize}
-                disabled={summarizing}
-              >
-                {summarizing ? '生成中…' : '重新生成'}
-              </Button>
             </>
           ) : (
-            <Button
-              className="w-full"
-              onClick={onSummarize}
-              disabled={summarizing}
-            >
-              {summarizing ? '生成中…' : '生成近期健康小结（智谱 GLM）'}
-            </Button>
+            <p className="text-sm text-muted-foreground">
+              还没有 AI 小结。去「我的 → AI 健康小结」生成。
+            </p>
           )}
         </CardContent>
       </Card>

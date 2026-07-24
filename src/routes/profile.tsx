@@ -20,6 +20,7 @@ import { Textarea } from '~/components/ui/textarea'
 import { formatDateTime } from '~/lib/datetime'
 import { listModels } from '~/server/llm'
 import { LLM_PRESETS, getPreset } from '~/lib/llm'
+import { getAiSummary } from '~/server/ai'
 import { AiSummaryView } from '~/components/ai-summary'
 
 const MED_STAGES = ['早晨', '中午', '晚上', '睡前'] as const
@@ -38,7 +39,7 @@ function ProfilePage() {
   // AI 模型配置
   const [aiProv, setAiProv] = useState(d.profile.ai_provider || 'zhipu')
   const [aiBase, setAiBase] = useState(d.profile.ai_base_url || '')
-  const [aiKey, setAiKey] = useState(d.profile.ai_api_key || '')
+  const [aiKey, setAiKey] = useState('') // review #14: 不从服务端加载实际 Key
   const [aiModel, setAiModel] = useState(d.profile.ai_model || '')
   const [aiModels, setAiModels] = useState<{ id: string }[]>([])
   const [detecting, setDetecting] = useState(false)
@@ -60,16 +61,26 @@ function ProfilePage() {
     }
   }
   const saveAiConfig = async () => {
-    await saveProfile({
-      data: {
-        ai_provider: aiProv,
-        ai_base_url: aiBase,
-        ai_api_key: aiKey,
-        ai_model: aiModel,
-      },
-    })
+    const patch: Record<string, string> = {
+      ai_provider: aiProv,
+      ai_base_url: aiBase,
+      ai_model: aiModel,
+    }
+    if (aiKey) patch.ai_api_key = aiKey // review #14: 仅当输入了新 Key 才覆盖
+    await saveProfile({ data: patch })
     await router.invalidate()
     flash('aiConfig')
+  }
+  const [genLoading, setGenLoading] = useState(false)
+  const [aiExtra, setAiExtra] = useState(d.profile.ai_extra_context || '')
+  const onGenerate = async () => {
+    setGenLoading(true)
+    try {
+      await getAiSummary()
+    } finally {
+      setGenLoading(false)
+    }
+    await router.invalidate()
   }
 
   const [age, setAge] = useState(d.profile.age ?? '')
@@ -229,6 +240,9 @@ function ProfilePage() {
                 去{getPreset(aiProv)?.label}获取 Key →
               </a>
             )}
+            {d.hasAiKey && !aiKey && (
+              <span className="ml-2 text-xs text-green-600">✓ 已设置</span>
+            )}
           </div>
 
           <Button
@@ -269,6 +283,30 @@ function ProfilePage() {
             </div>
           )}
 
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">
+              补充上下文（给 AI 更多背景信息）
+            </Label>
+            <Textarea
+              value={aiExtra}
+              onChange={(e) => setAiExtra(e.target.value)}
+              placeholder="例如：虽然没在 App 打卡但一直按时服药；近期换了降压药；最近睡眠不好…"
+              className="h-20"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-1"
+              onClick={async () => {
+                await saveProfile({ data: { ai_extra_context: aiExtra } })
+                await router.invalidate()
+              }}
+            >
+              保存补充
+            </Button>
+          </div>
+
           <Button type="button" className="w-full" onClick={saveAiConfig}>
             {savedKey === 'aiConfig' ? '已保存 ✓' : '保存配置'}
           </Button>
@@ -285,6 +323,9 @@ function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">已生成 {d.aiCount} 次</p>
+          <Button className="w-full" onClick={onGenerate} disabled={genLoading}>
+            {genLoading ? '生成中…（约 10–30 秒）' : '✨ 生成健康小结'}
+          </Button>
 
           <div className="space-y-2 rounded-xl border border-border p-3">
             <div className="flex items-center justify-between">

@@ -1,19 +1,22 @@
 import { createServerFn } from '@tanstack/react-start'
 import { count, desc } from 'drizzle-orm'
 import { env } from 'cloudflare:workers'
-import { bpRecords, createDb, type BpRecord } from '~/db'
+import { aiSummaries, bpRecords, createDb, type BpRecord } from '~/db'
 import { isMorningNow } from '~/lib/datetime'
 
 /** 首页数据：总数 + 最近 7 条。 */
 export const getHomeData = createServerFn().handler(async () => {
   const db = createDb(env.DB)
-  const [[c], recent] = await Promise.all([
+  const [[c], recent, [lastAi]] = await Promise.all([
     db.select({ value: count() }).from(bpRecords),
     db.select().from(bpRecords).orderBy(desc(bpRecords.id)).limit(7),
+    db.select().from(aiSummaries).orderBy(desc(aiSummaries.createdAt)).limit(1),
   ])
   return {
     recordCount: Number(c?.value ?? 0),
     recent: recent as BpRecord[],
+    lastAiSummary: lastAi?.content ?? null,
+    lastAiAt: lastAi?.createdAt ?? null,
   }
 })
 

@@ -156,6 +156,7 @@ export async function buildAiContext(
     `年龄: ${p.age || '未知'} | 身高/体重: ${p.height || '-'}/${p.weight || '-'}${bmi(p.height, p.weight) ? `(BMI ${bmi(p.height, p.weight)})` : ''} | 既往: ${p.history || '无'}`,
     `长期用药: ${medsSummary || '无'}`,
     cmb.length ? `合并高危因素: ${cmb.join('、')}` : '合并高危因素: 无',
+    `补充说明(用户自填): ${p.ai_extra_context || '无'}`,
     '',
     '# 【周期与依从】(近 30 天血压 / 近 14 天依从)',
     `测量: ${recs.length} 次(${morning.length} 晨 / ${evening.length} 晚)`,
