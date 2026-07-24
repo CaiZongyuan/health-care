@@ -1,0 +1,1 @@
+ALTER TABLE `medications` ADD `note` text DEFAULT '' NOT NULL;

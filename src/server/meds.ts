@@ -69,6 +69,7 @@ export const toggleMedTaken = createServerFn()
 export type AddMedInput = {
   name: string
   dosage: string
+  note: string
   stages: MedStage[]
 }
 
@@ -87,13 +88,14 @@ export const addMedication = createServerFn()
           !!s && typeof s.stage === 'string' && s.stage.trim() !== '' && typeof s.time === 'string',
       )
       .map((s) => ({ stage: (s as { stage: string }).stage, time: (s as { time: string }).time }))
-    return { name, dosage, stages }
+    return { name, dosage, note: typeof v.note === 'string' ? v.note.trim() : '', stages }
   })
   .handler(async ({ data }) => {
     const db = createDb(env.DB)
     await db.insert(medications).values({
       name: data.name,
       dosage: data.dosage,
+      note: data.note,
       stages: data.stages,
       active: true,
       createdAt: Date.now(),

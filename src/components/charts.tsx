@@ -15,10 +15,9 @@ export type ChartPoint = { sys: number; dia: number; ds: string }
 
 const LEVEL_COLOR: Record<BpLevel, string> = {
   low: '#ca8a04',
-  normal: '#16a34a',
-  elevated: '#d97706',
-  high: '#dc2626',
-  crisis: '#7f1d1d',
+  acceptable: '#16a34a',
+  high: '#ea580c',
+  crisis: '#dc2626',
 }
 
 function Empty() {
@@ -185,19 +184,18 @@ export function BpDonut({ rate }: { rate: number }) {
 
 /** D 区间分布柱（偏低/正常/正常高值/偏高/危象 计数）。 */
 export function BpDist({ points }: { points: ChartPoint[] }) {
-  const order: BpLevel[] = ['low', 'normal', 'elevated', 'high', 'crisis']
+  const order: BpLevel[] = ['low', 'acceptable', 'high', 'crisis']
   const labels: Record<BpLevel, string> = {
     low: '偏低',
-    normal: '正常',
-    elevated: '高值',
+    acceptable: '尚可',
     high: '偏高',
     crisis: '危象',
   }
-  const c: Record<BpLevel, number> = { low: 0, normal: 0, elevated: 0, high: 0, crisis: 0 }
+  const c: Record<BpLevel, number> = { low: 0, acceptable: 0, high: 0, crisis: 0 }
   for (const p of points) c[getBpStatus(p.sys, p.dia).level] += 1
   const max = Math.max(1, ...Object.values(c))
   const DW = 260
-  const bw = ((DW - 20) / 5) * 0.6
+  const bw = ((DW - 20) / 4) * 0.6
   const by = (v: number) => H - 20 - (v / max) * (H - 36)
   return (
     <svg viewBox={`0 0 ${DW} ${H}`} className="h-auto w-full">
@@ -239,10 +237,10 @@ export function BpCalendar({ points }: { points: ChartPoint[] }) {
         const avgD = a.d / a.n
         const lv = getBpStatus(avgS, avgD).level
         const col =
-          lv === 'normal'
+          lv === 'acceptable'
             ? '#16a34a'
-            : lv === 'elevated'
-              ? '#d97706'
+            : lv === 'high'
+              ? '#ea580c'
               : lv === 'low'
                 ? '#ca8a04'
                 : '#dc2626'

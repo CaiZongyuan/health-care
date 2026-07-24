@@ -1,8 +1,9 @@
-// 血压判定与达标率（家庭血压标准，决策 10）。
-// 偏高 ≥135/85；危象 ≥180/110；偏低 <90/60；正常高值 120-134/80-84。
+// 血压分级（面向已确诊高血压患者）。
+// 危象 ≥170/110；偏高 ≥140/90；尚可 <140/90；偏低 <90/60。
+// 达标线（家庭血压）≤135/85 是更严格的控制目标（达标率用）。
 // 上线前须临床医生签字确认（个人自用阶段为提醒，非医疗建议）。
 
-export type BpLevel = 'low' | 'normal' | 'elevated' | 'high' | 'crisis'
+export type BpLevel = 'low' | 'acceptable' | 'high' | 'crisis'
 
 export type BpStatus = {
   level: BpLevel
@@ -12,7 +13,7 @@ export type BpStatus = {
 }
 
 export function getBpStatus(sys: number, dia: number): BpStatus {
-  if (sys >= 180 || dia >= 110) {
+  if (sys >= 170 || dia >= 110) {
     return {
       level: 'crisis',
       label: '危象·建议就医',
@@ -26,23 +27,16 @@ export function getBpStatus(sys: number, dia: number): BpStatus {
       className: 'border-yellow-200 bg-yellow-50 text-yellow-700',
     }
   }
-  if (sys >= 135 || dia >= 85) {
+  if (sys >= 140 || dia >= 90) {
     return {
       level: 'high',
       label: '偏高',
-      className: 'border-red-200 bg-red-50 text-red-600',
-    }
-  }
-  if (sys >= 120 || dia >= 80) {
-    return {
-      level: 'elevated',
-      label: '正常高值',
-      className: 'border-amber-200 bg-amber-50 text-amber-700',
+      className: 'border-orange-200 bg-orange-50 text-orange-600',
     }
   }
   return {
-    level: 'normal',
-    label: '正常',
+    level: 'acceptable',
+    label: '尚可',
     className: 'border-green-200 bg-green-50 text-green-600',
   }
 }

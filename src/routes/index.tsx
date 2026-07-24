@@ -57,6 +57,7 @@ function HomePage() {
   const [medName, setMedName] = useState('')
   const [medDosage, setMedDosage] = useState('')
   const [medStages, setMedStages] = useState<string[]>([])
+  const [medNote, setMedNote] = useState('')
   const [addingMed, setAddingMed] = useState(false)
 
   const [takenKeys, setTakenKeys] = useState<Set<string>>(
@@ -128,11 +129,13 @@ function HomePage() {
         data: {
           name: medName,
           dosage: medDosage,
+          note: medNote,
           stages: medStages.map((stage) => ({ stage, time: '' })),
         },
       })
       setMedName('')
       setMedDosage('')
+      setMedNote('')
       setMedStages([])
       setShowAddMed(false)
       await router.invalidate()
@@ -374,7 +377,7 @@ function HomePage() {
                               {med.name}
                             </span>
                             <span className="block text-xs text-muted-foreground">
-                              {[time, med.dosage].filter(Boolean).join(' · ')}
+                              {[med.note, med.dosage].filter(Boolean).join(' · ')}
                             </span>
                           </span>
                         </button>
@@ -417,6 +420,16 @@ function HomePage() {
                   value={medDosage}
                   onChange={(e) => setMedDosage(e.target.value)}
                   placeholder="如 1片(30mg)"
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-muted-foreground">
+                  作用（如 降血压/抗眩晕）
+                </Label>
+                <Input
+                  value={medNote}
+                  onChange={(e) => setMedNote(e.target.value)}
+                  placeholder="如 降血压"
                 />
               </div>
               <div>

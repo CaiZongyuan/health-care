@@ -93,6 +93,7 @@ function ProfilePage() {
   const [mName, setMName] = useState('')
   const [mDosage, setMDosage] = useState('')
   const [mStages, setMStages] = useState<string[]>([])
+  const [mNote, setMNote] = useState('')
 
   const flash = (k: string) => {
     setSavedKey(k)
@@ -116,11 +117,13 @@ function ProfilePage() {
       data: {
         name: mName,
         dosage: mDosage,
+        note: mNote,
         stages: mStages.map((stage) => ({ stage, time: '' })),
       },
     })
     setMName('')
     setMDosage('')
+    setMNote('')
     setMStages([])
     setShowAdd(false)
     await router.invalidate()
@@ -419,6 +422,7 @@ function ProfilePage() {
                     <div className="font-bold">{m.name}</div>
                     <div className="text-xs text-muted-foreground">
                       {[
+                        m.note,
                         (m.stages ?? []).map((s) => s.stage).join('、'),
                         m.dosage,
                       ]
@@ -474,6 +478,11 @@ function ProfilePage() {
                 value={mDosage}
                 onChange={(e) => setMDosage(e.target.value)}
                 placeholder="剂量（如 1片/30mg）"
+              />
+              <Input
+                value={mNote}
+                onChange={(e) => setMNote(e.target.value)}
+                placeholder="作用（如 降血压/抗眩晕）"
               />
               <div>
                 <Label className="mb-1 block text-xs text-muted-foreground">

@@ -36,6 +36,8 @@ export const medications = sqliteTable('medications', {
     .notNull()
     .default(sql`'[]'`),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  // 作用说明（如"降血压""抗眩晕"），显示在药名旁
+  note: text('note').notNull().default(''),
   createdAt: integer('created_at').notNull(),
 })
 
