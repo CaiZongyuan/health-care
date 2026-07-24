@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getHomeData, saveBpRecord } from '~/server/records'
 import { addMedication, getTodayMeds, toggleMedTaken } from '~/server/meds'
 import { getAiSummary } from '~/server/ai'
@@ -69,9 +69,6 @@ function HomePage() {
   const [takenKeys, setTakenKeys] = useState<Set<string>>(
     () => new Set(data.meds.taken.map((t) => `${t.medId}|${t.stage}`)),
   )
-  useEffect(() => {
-    setTakenKeys(new Set(data.meds.taken.map((t) => `${t.medId}|${t.stage}`)))
-  }, [data.meds.taken])
 
   const toggleSymptom = (s: string) =>
     setSymptoms((prev) =>
@@ -125,7 +122,6 @@ function HomePage() {
     })
     try {
       await toggleMedTaken({ data: { medId, stage } })
-      await router.invalidate()
     } catch {
       setTakenKeys(prev)
     }
