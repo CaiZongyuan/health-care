@@ -11,6 +11,12 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  // cloudflare:workers 由 workerd 运行时提供；客户端 bundle 里残留的 server-fn 死引用不解析。
+  build: {
+    rolldownOptions: {
+      external: ['cloudflare:workers'],
+    },
+  },
   plugins: [
     tailwindcss(),
     cloudflare({ viteEnvironment: { name: 'ssr' } }),

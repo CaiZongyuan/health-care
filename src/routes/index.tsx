@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { getHomeData, saveBpRecord } from '~/server/records'
 import { addMedication, getTodayMeds, toggleMedTaken } from '~/server/meds'
 import { getAiSummary } from '~/server/ai'
+import { AiSummaryView } from '~/components/ai-summary'
 import { Button } from '~/components/ui/button'
 import {
   Card,
@@ -177,9 +178,7 @@ function HomePage() {
         <CardContent className="space-y-3">
           {summary ? (
             <>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                {summary.summary}
-              </p>
+              <AiSummaryView content={summary.summary} />
               <p className="text-xs text-muted-foreground">
                 ⚠️ AI 生成的健康提醒，非医疗诊断；如有不适请咨询医生。
               </p>

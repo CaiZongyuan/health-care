@@ -82,3 +82,50 @@ export function average(
     dia: Math.round(sum.dia / records.length),
   }
 }
+
+/** 样本标准差。 */
+export function std(values: number[]): number {
+  if (values.length < 2) return 0
+  const mean = values.reduce((a, b) => a + b, 0) / values.length
+  const v =
+    values.reduce((a, b) => a + (b - mean) ** 2, 0) / (values.length - 1)
+  return Math.sqrt(v)
+}
+
+/** 收缩压日间变异：CV% + 范围（用于"波动"维度）。 */
+export function sbpVariability(records: { sys: number }[]): {
+  cv: number
+  min: number
+  max: number
+} {
+  if (records.length === 0) return { cv: 0, min: 0, max: 0 }
+  const sys = records.map((r) => r.sys)
+  const mean = sys.reduce((a, b) => a + b, 0) / sys.length
+  return {
+    cv: mean > 0 ? Math.round((std(sys) / mean) * 100) : 0,
+    min: Math.min(...sys),
+    max: Math.max(...sys),
+  }
+}
+
+/** 趋势：近 7 天 vs 前 7 天均值差。 */
+export function trendDelta(
+  recent7: { sys: number; dia: number }[],
+  prev7: { sys: number; dia: number }[],
+): { dSys: number; dDia: number } | null {
+  const a = average(recent7)
+  const b = average(prev7)
+  if (!a || !b) return null
+  return { dSys: a.sys - b.sys, dDia: a.dia - b.dia }
+}
+
+/** 末尾连续 ≥135/85 的天数（清晨高血压连击）。 */
+export function trailingHighStreak(records: { sys: number; dia: number }[]): number {
+  let n = 0
+  for (let i = records.length - 1; i >= 0; i--) {
+    if (records[i].sys >= 135 || records[i].dia >= 85) n++
+    else break
+  }
+  return n
+}
+

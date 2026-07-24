@@ -1,76 +1,102 @@
 import { createServerFn } from '@tanstack/react-start'
-import { generateText } from 'ai'
+import { generateObject } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { count, desc, inArray } from 'drizzle-orm'
+import { z } from 'zod'
 import { env } from 'cloudflare:workers'
 import {
   aiSummaries,
-  bpRecords,
   createDb,
   profile,
   type AiSummary,
   type DB,
 } from '~/db'
-import { average, controlRate } from '~/lib/bp'
-import { formatDateTime } from '~/lib/datetime'
+import { buildAiContext } from '~/server/ai-context'
+import { getPreset } from '~/lib/llm'
 
-// 智谱 GLM 的 OpenAI 兼容端点（决策 07）。
-const ZHIPU_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4'
+export type AiConfig = {
+  provider: string
+  baseURL: string
+  apiKey: string
+  model: string
+}
 
-const SYSTEM = [
-  '你是一名健康助理。根据用户近期的家庭血压自测数据，',
-  '用中文写一段简洁的「近期健康小结」，',
-  '包含：整体情况、达标情况、需要关注的点。语气平和、鼓励。',
-  '注意：你提供的是健康提醒而非医疗诊断，不得给出用药或剂量调整建议；',
-  '若数据明显异常（如收缩压≥180 或舒张压≥110），请明确提醒尽快就医。',
-  '控制在 150 字以内。',
-].join('')
+const ZHIPU_BASE = 'https://open.bigmodel.cn/api/paas/v4'
 
-/** 生成小结文本（无数据返回提示；API 失败抛错）。手动 + 定时复用。 */
-export async function generateSummaryText(
-  e: Env,
-): Promise<{ content: string; hasData: boolean }> {
-  const apiKey = e.ZHIPU_API_KEY
-  if (!apiKey) throw new Error('尚未配置智谱 API Key（ZHIPU_API_KEY）')
-  const db = createDb(e.DB)
-  const recent = await db
+/** 读取用户配置的 LLM；未配置则回退 env(ZHIPU_*)。无可用 key 返回 null。 */
+export async function getAiConfig(db: DB): Promise<AiConfig | null> {
+  const rows = await db
     .select()
-    .from(bpRecords)
-    .orderBy(desc(bpRecords.measuredAt))
-    .limit(7)
-  if (recent.length === 0) {
+    .from(profile)
+    .where(
+      inArray(profile.key, ['ai_provider', 'ai_base_url', 'ai_api_key', 'ai_model']),
+    )
+  const m: Record<string, string> = {}
+  for (const r of rows) m[r.key] = r.value
+  const apiKey = m.ai_api_key || env.ZHIPU_API_KEY || ''
+  if (!apiKey) return null
+  const provider = m.ai_provider || 'zhipu'
+  const preset = getPreset(provider)
+  const baseURL = m.ai_base_url || preset?.baseURL || ZHIPU_BASE
+  const model = m.ai_model || preset?.defaultModel || env.ZHIPU_MODEL || 'glm-4.6'
+  return { provider, baseURL, apiKey, model }
+}
+
+// 系统 prompt：研究 daily-analysis.md §4.1（硬约束 + 分析维度）。
+const SYSTEM = `你是面向高血压患者的家庭随访「健康助理」。基于用户的家庭血压自测数据、用药打卡与长期档案，生成「近期健康小结」。
+
+硬约束：
+1. 只能用【数据】中已给出的数字、日期、症状；禁止编造未出现的数值或记录。
+2. 这是健康提醒，不是诊断。禁止任何用药/剂量增减建议（如"加量/换药/停药"）；可建议"带数据复诊、与医生讨论"。
+3. 任一读数 ≥180/110（危象），必须在【关注建议】明确写"尽快就医，不要自行加药"。
+4. 不得宣称测到了"晨峰/晨峰幅度"——家庭读数只能提示"清晨血压偏高"，真晨峰需 24 小时动态血压。
+5. 数据不足（<3 天、无清晨读数等）时如实说明"数据不足以得出某结论"，不要硬编。
+6. 语气平和、具体、像有心的高血压专科医生做随访；不要"注意饮食/规律作息/保持心情"这类空泛套话。
+
+分析要求（基于数据落地，命中适用的那些）：
+- 达标率：本期达标率(%、n/N)，并与上一期对比(↑/↓)。
+- 清晨维度：聚合晨起读数(均值/连续≥135/85 天数)，与晚间对照；命中清晨高血压要点出。
+- 依从性↔血压：依从率，并把漏服日期与当天/次日血压做时间关联(若数据支持)。
+- 症状↔血压：指出三者之一(沉默型=血压高无症状 / 症状与血压无关 / 同时段反复相关)。
+- 趋势与波动：近7天 vs 前7天方向；波动大时点出 CV 或范围并提示独立风险。
+- 可执行下一步：1 条具体的、非用药的建议(测量时机/记录习惯/带数据复诊/与医生聊依从性障碍)。
+
+发现要"到点子上"：宁可少而具体，不要多而空泛。所有文案简体中文。`
+
+const summarySchema = z.object({
+  整体评估: z
+    .string()
+    .describe('1–2句：本期血压总体情况 + 趋势方向 + 达标率一句话'),
+  关键发现: z
+    .array(z.string())
+    .describe('3–5条，每条一个具体发现，带数字/日期'),
+  关注建议: z
+    .array(z.string())
+    .describe('2–4条可执行的非用药建议；命中危象则首条为就医提醒'),
+})
+
+/** 生成小结（结构化对象，存为 JSON 字符串）。手动 + 定时复用。 */
+export async function generateSummaryText(
+  db: DB,
+  cfg: AiConfig,
+): Promise<{ content: string; hasData: boolean }> {
+  const { contextText, hasData } = await buildAiContext(db)
+  if (!hasData) {
     return { content: '还没有血压记录，先记录几天再生成小结。', hasData: false }
   }
-
-  const ascending = recent.slice().reverse()
-  const dataLine = ascending
-    .map((r) => {
-      const parts = [`${formatDateTime(r.measuredAt)} ${r.sys}/${r.dia}mmHg`]
-      if (r.hr) parts.push(`心率${r.hr}`)
-      if (r.spo2) parts.push(`血氧${r.spo2}%`)
-      if (r.symptoms.length) parts.push(`症状:${r.symptoms.join('/')}`)
-      if (r.isMorning) parts.push('晨起')
-      return parts.join(' ')
-    })
-    .join('\n')
-  const avg = average(recent)
-  const rate = controlRate(recent)
-  const promptText = [
-    '家庭血压达标标准：收缩压≤135 且 舒张压≤85。',
-    '',
-    `近 ${recent.length} 次记录：`,
-    dataLine,
-    '',
-    `平均血压 ${avg ? `${avg.sys}/${avg.dia}` : '-/-'}，达标率 ${rate}%。`,
-  ].join('\n')
-
-  const zhipu = createOpenAI({ baseURL: ZHIPU_BASE_URL, apiKey, name: 'zhipu' })
-  const { text } = await generateText({
-    model: zhipu.chat(e.ZHIPU_MODEL),
-    system: SYSTEM,
-    prompt: promptText,
+  const provider = createOpenAI({
+    baseURL: cfg.baseURL,
+    apiKey: cfg.apiKey,
+    name: cfg.provider,
   })
-  return { content: text.trim(), hasData: true }
+  const { object } = await generateObject({
+    model: provider.chat(cfg.model),
+    schema: summarySchema,
+    system: SYSTEM,
+    prompt: contextText,
+    temperature: 0.2,
+  })
+  return { content: JSON.stringify(object), hasData: true }
 }
 
 /** 生成并存档一条小结（trigger）。无数据则不存档。 */
@@ -78,9 +104,13 @@ export async function generateAndSave(
   e: Env,
   trigger: 'manual' | 'auto',
 ): Promise<string> {
-  const { content, hasData } = await generateSummaryText(e)
+  const db = createDb(e.DB)
+  const cfg = await getAiConfig(db)
+  if (!cfg) {
+    throw new Error('未配置 AI（去 我的 → AI 模型配置 设置 provider/key/model）')
+  }
+  const { content, hasData } = await generateSummaryText(db, cfg)
   if (hasData) {
-    const db = createDb(e.DB)
     await db.insert(aiSummaries).values({
       createdAt: Date.now(),
       trigger,
@@ -92,7 +122,7 @@ export async function generateAndSave(
 
 export type AiAutoSettings = { enabled: boolean; freq: 'daily' | 'weekly' }
 
-/** 读取 AI 自动设置（定时任务用）。键：ai_auto_enabled(0/1)、ai_auto_freq(daily/weekly)。 */
+/** 读取 AI 自动设置（定时任务用）。 */
 export async function readAiAutoSettings(db: DB): Promise<AiAutoSettings> {
   const rows = await db
     .select()

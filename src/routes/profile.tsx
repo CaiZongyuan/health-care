@@ -18,6 +18,9 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Textarea } from '~/components/ui/textarea'
 import { formatDateTime } from '~/lib/datetime'
+import { listModels } from '~/server/llm'
+import { LLM_PRESETS, getPreset } from '~/lib/llm'
+import { AiSummaryView } from '~/components/ai-summary'
 
 const MED_STAGES = ['早晨', '中午', '晚上', '睡前'] as const
 
@@ -31,6 +34,43 @@ function ProfilePage() {
   const d = Route.useLoaderData()
   const aiEnabled = d.profile.ai_auto_enabled === '1'
   const aiFreq = d.profile.ai_auto_freq === 'weekly' ? 'weekly' : 'daily'
+
+  // AI 模型配置
+  const [aiProv, setAiProv] = useState(d.profile.ai_provider || 'zhipu')
+  const [aiBase, setAiBase] = useState(d.profile.ai_base_url || '')
+  const [aiKey, setAiKey] = useState(d.profile.ai_api_key || '')
+  const [aiModel, setAiModel] = useState(d.profile.ai_model || '')
+  const [aiModels, setAiModels] = useState<{ id: string }[]>([])
+  const [detecting, setDetecting] = useState(false)
+  const aiEffectiveBase = aiBase || getPreset(aiProv)?.baseURL || ''
+  const onDetectModels = async () => {
+    setDetecting(true)
+    try {
+      const r = await listModels({
+        data: { provider: aiProv, baseURL: aiEffectiveBase, apiKey: aiKey },
+      })
+      setAiModels(r.models)
+      if (r.models.length && !r.models.some((x) => x.id === aiModel)) {
+        setAiModel(r.models[0].id)
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '检测失败')
+    } finally {
+      setDetecting(false)
+    }
+  }
+  const saveAiConfig = async () => {
+    await saveProfile({
+      data: {
+        ai_provider: aiProv,
+        ai_base_url: aiBase,
+        ai_api_key: aiKey,
+        ai_model: aiModel,
+      },
+    })
+    await router.invalidate()
+    flash('aiConfig')
+  }
 
   const [age, setAge] = useState(d.profile.age ?? '')
   const [height, setHeight] = useState(d.profile.height ?? '')
@@ -127,6 +167,117 @@ function ProfilePage() {
         </CardContent>
       </Card>
 
+      {/* AI 模型配置 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>AI 模型配置</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">服务商</Label>
+            <select
+              value={aiProv}
+              onChange={(e) => {
+                setAiProv(e.target.value)
+                setAiBase('')
+                setAiModels([])
+              }}
+              className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring"
+            >
+              {LLM_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                  {p.region === 'global' ? '（需海外网络）' : ''}
+                </option>
+              ))}
+              <option value="custom">自定义（OpenAI 兼容）</option>
+            </select>
+          </div>
+
+          {aiProv === 'custom' ? (
+            <div>
+              <Label className="mb-1 block text-xs text-muted-foreground">
+                Base URL
+              </Label>
+              <Input
+                value={aiBase}
+                onChange={(e) => setAiBase(e.target.value)}
+                placeholder="https://your-provider/v1"
+              />
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              端点：{getPreset(aiProv)?.baseURL}
+            </p>
+          )}
+
+          <div>
+            <Label className="mb-1 block text-xs text-muted-foreground">API Key</Label>
+            <Input
+              type="password"
+              value={aiKey}
+              onChange={(e) => setAiKey(e.target.value)}
+              placeholder="sk-..."
+            />
+            {getPreset(aiProv)?.keyUrl && (
+              <a
+                href={getPreset(aiProv)?.keyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-primary hover:underline"
+              >
+                去{getPreset(aiProv)?.label}获取 Key →
+              </a>
+            )}
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={onDetectModels}
+            disabled={detecting || !aiKey}
+          >
+            {detecting ? '检测中…' : '检测可用模型'}
+          </Button>
+
+          {aiModels.length > 0 ? (
+            <div>
+              <Label className="mb-1 block text-xs text-muted-foreground">模型</Label>
+              <select
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}
+                className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring"
+              >
+                {aiModels.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <Label className="mb-1 block text-xs text-muted-foreground">
+                模型（可手动填或先检测）
+              </Label>
+              <Input
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}
+                placeholder="如 glm-4.6 / deepseek-chat"
+              />
+            </div>
+          )}
+
+          <Button type="button" className="w-full" onClick={saveAiConfig}>
+            {savedKey === 'aiConfig' ? '已保存 ✓' : '保存配置'}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            不配置则默认用智谱。⚠️ Key 存在本地数据库（个人自用），仅你可访问。
+          </p>
+        </CardContent>
+      </Card>
+
       {/* AI 健康小结 */}
       <Card>
         <CardHeader>
@@ -197,7 +348,7 @@ function ProfilePage() {
                       <span>{formatDateTime(s.createdAt)}</span>
                       <span>{s.trigger === 'auto' ? '定时' : '手动'}</span>
                     </div>
-                    <p className="whitespace-pre-wrap text-sm">{s.content}</p>
+                    <AiSummaryView content={s.content} />
                   </div>
                 ))}
               </div>
