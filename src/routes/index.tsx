@@ -165,12 +165,9 @@ function HomePage() {
               <AiSummaryView content={data.lastAiSummary} collapsible />
               {data.lastAiAt && (
                 <p className="text-xs text-muted-foreground">
-                  {formatDateTime(data.lastAiAt)} · 去「我的」可重新生成
+                  {formatDateTime(data.lastAiAt)}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground">
-                ⚠️ AI 生成的健康提醒，非医疗诊断；如有不适请咨询医生。
-              </p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">
